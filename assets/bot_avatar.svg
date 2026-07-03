@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <rect width="96" height="96" rx="48" fill="#9fb88d"/>
+  <path d="M48 18v56" stroke="#f7f4ea" stroke-width="4" stroke-linecap="round"/>
+  <path d="M48 42c-10-2-17-9-20-19 11 2 18 8 20 19z" fill="none" stroke="#f7f4ea" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M49 53c9-3 16-10 19-20-11 2-18 9-19 20z" fill="none" stroke="#f7f4ea" stroke-width="4" stroke-linejoin="round"/>
+  <text x="48" y="83" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#f7f4ea">小易</text>
+</svg>

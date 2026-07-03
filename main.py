@@ -65,6 +65,199 @@ GENERAL_CHAT_MESSAGE = """你是星选商城的智能售后客服小小易。
 SHOP_NAME = "星选商城"
 DEFAULT_DEMO_PHONE = "13800000001"
 DEFAULT_DEMO_PASSWORD = "123456"
+BOT_AVATAR = "assets/bot_avatar.svg"
+USER_AVATAR = "assets/user_avatar.svg"
+
+APP_CSS = """
+:root {
+  --wechat-bg: #ededed;
+  --wechat-panel: #f7f7f7;
+  --wechat-line: #dedede;
+  --wechat-text: #111111;
+  --wechat-muted: #9a9a9a;
+  --wechat-user: #fbe8e8;
+  --wechat-bot: #ffffff;
+  --wechat-green: #8faa78;
+}
+
+body,
+.gradio-container {
+  background: var(--wechat-bg) !important;
+}
+
+.gradio-container {
+  max-width: 1180px !important;
+  margin: 0 auto !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif !important;
+}
+
+footer {
+  display: none !important;
+}
+
+#app_title {
+  text-align: center;
+  color: #1f1f1f;
+  padding: 10px 0 4px;
+}
+
+#app_title h1 {
+  font-size: 22px;
+  font-weight: 650;
+  margin: 0;
+}
+
+.wechat-shell {
+  background: var(--wechat-bg);
+  border: 1px solid var(--wechat-line);
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 720px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.wechat-header {
+  background: #f5f5f5;
+  border-bottom: 1px solid var(--wechat-line);
+  padding: 12px 16px;
+  text-align: center;
+}
+
+.wechat-header h3,
+.wechat-header p {
+  margin: 0 !important;
+}
+
+.wechat-header h3 {
+  font-size: 17px !important;
+  font-weight: 650 !important;
+  color: #111111 !important;
+}
+
+.wechat-header p {
+  margin-top: 4px !important;
+  font-size: 12px !important;
+  color: var(--wechat-muted) !important;
+}
+
+#wechat_chatbot {
+  background: var(--wechat-bg) !important;
+  border: 0 !important;
+}
+
+#wechat_chatbot .wrap,
+#wechat_chatbot .bubble-wrap {
+  background: var(--wechat-bg) !important;
+}
+
+#wechat_chatbot .message {
+  border-radius: 6px !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  color: var(--wechat-text) !important;
+  font-size: 17px !important;
+  line-height: 1.55 !important;
+  padding: 12px 14px !important;
+}
+
+#wechat_chatbot .message-row.user .message {
+  background: var(--wechat-user) !important;
+}
+
+#wechat_chatbot .message-row.bot .message,
+#wechat_chatbot .message-row.assistant .message {
+  background: var(--wechat-bot) !important;
+}
+
+#wechat_chatbot img.avatar {
+  border-radius: 50% !important;
+  width: 46px !important;
+  height: 46px !important;
+}
+
+.wechat-upload {
+  padding: 0 12px 8px;
+  background: var(--wechat-bg);
+}
+
+.wechat-input-bar {
+  align-items: center !important;
+  gap: 10px !important;
+  background: #f7f7f7;
+  border-top: 1px solid var(--wechat-line);
+  padding: 12px !important;
+}
+
+.wechat-input textarea,
+.wechat-input input {
+  border: 0 !important;
+  border-radius: 0 !important;
+  min-height: 46px !important;
+  font-size: 16px !important;
+  background: #ffffff !important;
+}
+
+.wechat-icon-btn,
+.wechat-send-btn {
+  min-width: 48px !important;
+}
+
+.wechat-icon-btn button,
+.wechat-send-btn button {
+  height: 46px !important;
+  border-radius: 23px !important;
+  font-size: 20px !important;
+  border: 2px solid #111111 !important;
+  background: #f7f7f7 !important;
+  color: #111111 !important;
+  padding: 0 !important;
+}
+
+.wechat-send-btn button {
+  border-radius: 6px !important;
+  border: 0 !important;
+  background: #1aad19 !important;
+  color: #ffffff !important;
+  font-size: 15px !important;
+}
+
+.quick-questions {
+  background: #f7f7f7;
+  border-top: 1px solid var(--wechat-line);
+  padding: 10px 12px;
+}
+
+.wechat-orders {
+  background: #f7f7f7;
+  border-bottom: 1px solid var(--wechat-line);
+  padding: 8px 12px;
+}
+
+.wechat-orders table {
+  font-size: 12px !important;
+}
+
+.backend-panel {
+  background: #ffffff;
+  padding: 14px;
+  border-radius: 8px;
+}
+
+@media (max-width: 780px) {
+  .gradio-container {
+    padding: 0 !important;
+  }
+
+  .wechat-shell {
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    min-height: 100vh;
+  }
+
+}
+"""
 
 ORDERS = {
     "EC20260702001": {
@@ -849,16 +1042,18 @@ def build_demo():
             "content": f"你好，{demo_user_name}。我是小小易，可以直接帮你处理订单、物流、退款、退货、换货、投诉和转人工等售后问题。",
         }
     ]
-    with gr.Blocks(title="小小易，星选商城售后客服", analytics_enabled=False) as app:
+    with gr.Blocks(title="小小易，星选商城售后客服", analytics_enabled=False, css=APP_CSS) as app:
         user_state = gr.State(demo_user)
-        gr.Markdown("# 小小易，星选商城售后客服")
+        gr.Markdown("# 小小易，星选商城售后客服", elem_id="app_title")
 
         with gr.Tabs():
             with gr.Tab("用户客服"):
-                with gr.Row():
-                    with gr.Column(scale=1):
-                        gr.Markdown("### 当前用户")
-                        gr.Markdown(f"演示用户：{demo_user_name}\n\n已自动进入售后客服系统。")
+                with gr.Column(elem_classes="wechat-shell"):
+                    gr.Markdown(
+                        f"### 小小易\n{demo_user_name}，已接入星选商城售后系统",
+                        elem_classes="wechat-header",
+                    )
+                    with gr.Accordion("我的订单", open=False, elem_classes="wechat-orders"):
                         orders_table = gr.Dataframe(
                             headers=["订单号", "商品", "状态", "物流单号", "详情"],
                             value=rows_for_orders(demo_user_id),
@@ -866,22 +1061,39 @@ def build_demo():
                             col_count=(5, "fixed"),
                             label="我的订单",
                         )
-                    with gr.Column(scale=2):
-                        chatbot = gr.Chatbot(type="messages", height=520, label="客服对话", value=greeting)
-                        files = gr.File(
-                            label="上传售后凭证（照片、视频、快递面单等）",
-                            file_count="multiple",
-                            visible=False,
+                    chatbot = gr.Chatbot(
+                        type="messages",
+                        height=560,
+                        label="客服对话",
+                        value=greeting,
+                        show_label=False,
+                        container=False,
+                        layout="bubble",
+                        bubble_full_width=False,
+                        avatar_images=(USER_AVATAR, BOT_AVATAR),
+                        elem_id="wechat_chatbot",
+                    )
+                    files = gr.File(
+                        label="上传售后凭证（照片、视频、快递面单等）",
+                        file_count="multiple",
+                        visible=False,
+                        elem_classes="wechat-upload",
+                    )
+                    with gr.Row(elem_classes="wechat-input-bar"):
+                        voice_btn = gr.Button("麦", scale=1, min_width=48, elem_classes="wechat-icon-btn")
+                        message = gr.Textbox(
+                            placeholder="",
+                            label="",
+                            show_label=False,
+                            scale=12,
+                            max_lines=3,
+                            elem_classes="wechat-input",
                         )
-                        with gr.Row():
-                            message = gr.Textbox(
-                                placeholder="请输入订单号或售后问题...",
-                                label="用户输入",
-                                scale=12,
-                            )
-                            upload_btn = gr.Button("+", scale=1, min_width=44)
-                            send_btn = gr.Button("发送", scale=2, min_width=72)
+                        emoji_btn = gr.Button("笑", scale=1, min_width=48, elem_classes="wechat-icon-btn")
+                        upload_btn = gr.Button("+", scale=1, min_width=48, elem_classes="wechat-icon-btn")
+                        send_btn = gr.Button("发送", scale=2, min_width=72, elem_classes="wechat-send-btn")
 
+                    with gr.Accordion("常用问题", open=False, elem_classes="quick-questions"):
                         gr.Examples(
                             examples=[
                                 "订单 EC20260702002 物流到哪了？",
@@ -894,23 +1106,24 @@ def build_demo():
                         )
 
             with gr.Tab("后台管理"):
-                gr.Markdown("### 工单、会话和凭证")
-                refresh_btn = gr.Button("刷新后台数据")
-                tickets_table = gr.Dataframe(
-                    headers=["工单号", "用户", "订单号", "类型", "状态", "优先级", "进度", "更新时间"],
-                    value=rows_for_tickets(),
-                    label="工单列表",
-                )
-                conversations_table = gr.Dataframe(
-                    headers=["时间", "渠道", "用户", "会话", "角色", "内容"],
-                    value=rows_for_conversations(),
-                    label="会话记录",
-                )
-                evidence_table = gr.Dataframe(
-                    headers=["时间", "用户", "订单号", "工单号", "原文件名", "保存路径"],
-                    value=rows_for_evidence(),
-                    label="售后凭证",
-                )
+                with gr.Column(elem_classes="backend-panel"):
+                    gr.Markdown("### 工单、会话和凭证")
+                    refresh_btn = gr.Button("刷新后台数据")
+                    tickets_table = gr.Dataframe(
+                        headers=["工单号", "用户", "订单号", "类型", "状态", "优先级", "进度", "更新时间"],
+                        value=rows_for_tickets(),
+                        label="工单列表",
+                    )
+                    conversations_table = gr.Dataframe(
+                        headers=["时间", "渠道", "用户", "会话", "角色", "内容"],
+                        value=rows_for_conversations(),
+                        label="会话记录",
+                    )
+                    evidence_table = gr.Dataframe(
+                        headers=["时间", "用户", "订单号", "工单号", "原文件名", "保存路径"],
+                        value=rows_for_evidence(),
+                        label="售后凭证",
+                    )
 
         send_btn.click(
             send_message_ui,
