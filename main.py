@@ -788,6 +788,25 @@ def normalize_uploaded_files(files):
     return paths
 
 
+def should_show_evidence_upload(message):
+    text = (message or "").strip().lower()
+    if not text:
+        return False
+    return contains_any(text, [
+        "破损", "坏了", "质量问题", "漏液", "错发", "发错", "发错货",
+        "少件", "漏发", "少发", "缺少", "没收到全部", "凭证", "照片",
+        "图片", "视频", "面单", "包装", "瑕疵", "不能用",
+    ])
+
+
+def evidence_upload_update(message):
+    return gr.update(visible=should_show_evidence_upload(message))
+
+
+def show_evidence_upload():
+    return gr.update(visible=True)
+
+
 def send_message_ui(message, history, user, files):
     text = (message or "").strip()
     if not text and not files:
@@ -813,7 +832,7 @@ def send_message_ui(message, history, user, files):
         {"role": "user", "content": ask_text},
         {"role": "assistant", "content": answer},
     ]
-    return updated, "", None, rows_for_orders(user_id)
+    return updated, "", gr.update(value=None, visible=False), rows_for_orders(user_id)
 
 
 def refresh_backend():
@@ -850,14 +869,18 @@ def build_demo():
                     with gr.Column(scale=2):
                         chatbot = gr.Chatbot(type="messages", height=520, label="客服对话", value=greeting)
                         files = gr.File(
-                            label="上传售后凭证（破损、错发、少件等）",
+                            label="上传售后凭证（照片、视频、快递面单等）",
                             file_count="multiple",
+                            visible=False,
                         )
-                        message = gr.Textbox(
-                            placeholder="请输入订单号或售后问题...",
-                            label="用户输入",
-                        )
-                        send_btn = gr.Button("发送")
+                        with gr.Row():
+                            message = gr.Textbox(
+                                placeholder="请输入订单号或售后问题...",
+                                label="用户输入",
+                                scale=12,
+                            )
+                            upload_btn = gr.Button("+", scale=1, min_width=44)
+                            send_btn = gr.Button("发送", scale=2, min_width=72)
 
                         gr.Examples(
                             examples=[
@@ -899,6 +922,18 @@ def build_demo():
             send_message_ui,
             inputs=[message, chatbot, user_state, files],
             outputs=[chatbot, message, files, orders_table],
+            api_name=False,
+        )
+        message.change(
+            evidence_upload_update,
+            inputs=[message],
+            outputs=[files],
+            api_name=False,
+        )
+        upload_btn.click(
+            show_evidence_upload,
+            inputs=[],
+            outputs=[files],
             api_name=False,
         )
         refresh_btn.click(
