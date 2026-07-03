@@ -63,6 +63,8 @@ GENERAL_CHAT_MESSAGE = """你是星选商城的智能售后客服小小易。
 7. 如果用户表达不满、催促或投诉，要先安抚，再说明可登记工单或转人工。"""
 
 SHOP_NAME = "星选商城"
+DEFAULT_DEMO_PHONE = "13800000001"
+DEFAULT_DEMO_PASSWORD = "123456"
 
 ORDERS = {
     "EC20260702001": {
@@ -187,8 +189,8 @@ INVOICE_PROCESS = """发票咨询：
 请提供订单号、发票抬头、税号和接收邮箱。
 如果订单已完成且符合开票条件，可以登记补开发票；具体开票时间以财务处理为准。"""
 
-HUMAN_PROCESS = """目前这个演示系统暂未接入真实人工客服。
-我可以模拟登记人工客服诉求。请留下订单号、问题类型和联系方式，正式项目中可接入工单系统或人工客服后台。"""
+HUMAN_PROCESS = """可以，我会先帮你登记人工客服工单。
+请补充订单号、问题说明和联系方式；如果已经提供订单号，我会一起记录到工单里。"""
 
 COMPLAINT_PROCESS = """我理解你现在比较着急。为了按正式售后流程升级处理，请提供：
 1. 订单号。
@@ -295,7 +297,32 @@ def is_standalone_service_intent(text):
     return normalized in standalone_intents
 
 
-def standalone_service_answer(text):
+def default_demo_user():
+    return get_user_by_phone(DEFAULT_DEMO_PHONE, DEFAULT_DEMO_PASSWORD)
+
+
+def human_handoff_answer(message, user_id=None):
+    order_id = extract_order_id(message or "")
+    priority = "高" if contains_any(message or "", ["投诉", "不满意", "太慢", "紧急", "催"]) else "普通"
+    ticket_id = create_ticket(
+        message or "用户申请转人工",
+        user_id=user_id,
+        order_id=order_id,
+        category="人工客服",
+        priority=priority,
+    )
+    order_text = f"关联订单：{order_id}" if order_id else "关联订单：暂未提供"
+    return (
+        "已为你登记人工客服工单。\n"
+        f"工单号：{ticket_id}\n"
+        f"{order_text}\n"
+        f"优先级：{priority}\n"
+        "预计首次反馈：1 个工作日内。\n"
+        "为了人工客服更快处理，请补充订单号、问题说明和联系方式。你也可以继续把情况发给小小易，我会先帮你整理处理要点。"
+    )
+
+
+def standalone_service_answer(text, user_id=None):
     normalized = re.sub(r"[\s。！？!?,，~～.]", "", text.lower())
     if "换货" in normalized:
         return EXCHANGE_PROCESS
@@ -320,7 +347,7 @@ def standalone_service_answer(text):
     if "投诉" in normalized:
         return COMPLAINT_PROCESS
     if "转人工" in normalized:
-        return HUMAN_PROCESS
+        return human_handoff_answer(text, user_id=user_id)
     return None
 
 
@@ -420,7 +447,7 @@ def quick_answer(message, history=None, user_id=None):
 
     order_id = extract_order_id(text)
     if not order_id and is_standalone_service_intent(text):
-        return standalone_service_answer(text)
+        return standalone_service_answer(text, user_id=user_id)
     if not order_id and should_use_history_order(text):
         order_id = extract_order_id(text, history)
     if order_id:
@@ -496,7 +523,7 @@ def quick_answer(message, history=None, user_id=None):
     if contains_any(text, ["投诉", "不满意", "没人处理", "太慢", "升级处理"]):
         return COMPLAINT_PROCESS
     if contains_any(text, ["人工", "真人", "转人工", "工单"]):
-        return HUMAN_PROCESS
+        return human_handoff_answer(text, user_id=user_id)
     if contains_any(text, ["保修", "质保", "维修"]):
         return "部分电子类商品支持 1 年质保，具体以商品页面说明为准。请提供订单号、商品名称和故障说明，我可以帮你判断处理方式。"
     if contains_any(text, ["七天", "7天", "无理由", "不想要"]):
@@ -580,7 +607,7 @@ def log_answer(message, answer, mode, user_id=None, channel="web", session_id=No
         save_message(session_id, "assistant", answer, user_id=user_id, channel=channel)
         order_id = extract_order_id(message)
         ticket_id = None
-        if should_create_ticket(message):
+        if should_create_ticket(message) and "工单号" not in answer:
             ticket_id = create_ticket(
                 message,
                 user_id=user_id,
@@ -794,28 +821,34 @@ def refresh_backend():
 
 
 def build_demo():
+    demo_user = default_demo_user()
+    demo_user_id = demo_user.get("user_id") if demo_user else None
+    demo_user_name = demo_user.get("name", "用户") if demo_user else "用户"
+    greeting = [
+        {
+            "role": "assistant",
+            "content": f"你好，{demo_user_name}。我是小小易，可以直接帮你处理订单、物流、退款、退货、换货、投诉和转人工等售后问题。",
+        }
+    ]
     with gr.Blocks(title="小小易，星选商城售后客服", analytics_enabled=False) as app:
-        user_state = gr.State(None)
+        user_state = gr.State(demo_user)
         gr.Markdown("# 小小易，星选商城售后客服")
 
         with gr.Tabs():
             with gr.Tab("用户客服"):
                 with gr.Row():
                     with gr.Column(scale=1):
-                        gr.Markdown("### 用户登录")
-                        phone = gr.Textbox(label="手机号", value="13800000001")
-                        password = gr.Textbox(label="密码", value="123456", type="password")
-                        login_btn = gr.Button("登录")
-                        login_status = gr.Markdown("未登录")
+                        gr.Markdown("### 当前用户")
+                        gr.Markdown(f"演示用户：{demo_user_name}\n\n已自动进入售后客服系统。")
                         orders_table = gr.Dataframe(
                             headers=["订单号", "商品", "状态", "物流单号", "详情"],
-                            value=[],
+                            value=rows_for_orders(demo_user_id),
                             row_count=5,
                             col_count=(5, "fixed"),
                             label="我的订单",
                         )
                     with gr.Column(scale=2):
-                        chatbot = gr.Chatbot(type="messages", height=520, label="客服对话")
+                        chatbot = gr.Chatbot(type="messages", height=520, label="客服对话", value=greeting)
                         files = gr.File(
                             label="上传售后凭证（破损、错发、少件等）",
                             file_count="multiple",
@@ -856,12 +889,6 @@ def build_demo():
                     label="售后凭证",
                 )
 
-        login_btn.click(
-            login_user,
-            inputs=[phone, password],
-            outputs=[user_state, login_status, orders_table, chatbot],
-            api_name=False,
-        )
         send_btn.click(
             send_message_ui,
             inputs=[message, chatbot, user_state, files],
