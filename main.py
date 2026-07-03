@@ -3,13 +3,28 @@ import logging
 import os
 import re
 from datetime import datetime
+from pathlib import Path
 
 import gradio as gr
 from langchain_chroma import Chroma
 from langchain_ollama import OllamaEmbeddings
-from ollama import Client
 
+from app_database import (
+    create_ticket,
+    get_order,
+    get_recent_messages,
+    get_user_by_phone,
+    init_app_database,
+    list_conversations,
+    list_evidence_files,
+    list_orders,
+    list_tickets,
+    save_evidence_file,
+    save_message,
+    should_create_ticket,
+)
 from learning_store import find_learned_answer, record_qa
+from model_provider import chat_completion
 
 
 logging.basicConfig(
@@ -19,7 +34,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-CHAT_MODEL_NAME = os.environ.get("OLLAMA_CHAT_MODEL", "qwen3:4b")
 EMBED_MODEL_NAME = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text")
 
 embedding_llm = OllamaEmbeddings(model=EMBED_MODEL_NAME)
@@ -29,7 +43,7 @@ db = Chroma(
     collection_name="planetbucks",
 )
 retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
-ollama_client = Client()
+init_app_database()
 
 SYSTEM_MESSAGE = """你是星选商城的正式售后客服 小小易。
 请始终使用中文回答，语气要礼貌、清楚、专业、克制。
@@ -310,8 +324,17 @@ def standalone_service_answer(text):
     return None
 
 
-def order_answer(order_id):
-    order = ORDERS.get(order_id)
+def order_answer(order_id, user_id=None):
+    order = get_order(order_id, user_id=user_id)
+    if not order and user_id:
+        public_order = get_order(order_id)
+        if public_order:
+            return (
+                f"订单 {order_id} 不属于当前登录用户。\n"
+                "为保护订单信息，请使用下单手机号登录后再查询，或提供收货手机号后四位由人工复核。"
+            )
+    if not order:
+        order = ORDERS.get(order_id)
     if not order:
         return (
             f"暂未查询到订单 {order_id} 的示例数据。\n"
@@ -327,9 +350,9 @@ def order_answer(order_id):
     )
 
 
-def order_contextual_answer(order_id, text):
-    base = order_answer(order_id)
-    order = ORDERS.get(order_id)
+def order_contextual_answer(order_id, text, user_id=None):
+    base = order_answer(order_id, user_id=user_id)
+    order = get_order(order_id, user_id=user_id) or get_order(order_id) or ORDERS.get(order_id)
     if not order:
         return base
 
@@ -383,7 +406,7 @@ def after_sales_checklist():
 5. 如商品破损、少件、错发或质量问题，请提供照片或视频、外包装和快递面单照片。"""
 
 
-def quick_answer(message, history=None):
+def quick_answer(message, history=None, user_id=None):
     text = message.strip().lower()
     if not text:
         return after_sales_checklist()
@@ -401,7 +424,7 @@ def quick_answer(message, history=None):
     if not order_id and should_use_history_order(text):
         order_id = extract_order_id(text, history)
     if order_id:
-        return order_contextual_answer(order_id, text)
+        return order_contextual_answer(order_id, text, user_id=user_id)
 
     if text in ["你好", "您好", "hi", "hello", "在吗"]:
         return f"你好，我是{SHOP_NAME}售后客服 小小易。你可以问我订单查询、物流、退款、退货退款、换货、补发、破损少件或发票问题。"
@@ -466,7 +489,7 @@ def quick_answer(message, history=None):
         return MISSING_PROCESS
     if contains_any(text, ["物流", "快递", "没更新", "丢件", "没收到", "到哪"]):
         if order_id:
-            return order_answer(order_id)
+            return order_answer(order_id, user_id=user_id)
         return LOGISTICS_PROCESS
     if contains_any(text, ["发票", "开票", "税号", "抬头"]):
         return INVOICE_PROCESS
@@ -535,7 +558,7 @@ def clean_answer(content):
     return content
 
 
-def log_answer(message, answer, mode):
+def log_answer(message, answer, mode, user_id=None, channel="web", session_id=None, evidence_files=None):
     chat_history.append({"user": message, "assistant": answer})
     logger.info(json.dumps({
         "timestamp": datetime.now().isoformat(),
@@ -549,6 +572,33 @@ def log_answer(message, answer, mode):
         logger.info(json.dumps({
             "timestamp": datetime.now().isoformat(),
             "event": "learning_record_failed",
+            "error": str(exc),
+        }, ensure_ascii=False))
+    try:
+        session_id = session_id or user_id or "web_guest"
+        save_message(session_id, "user", message, user_id=user_id, channel=channel)
+        save_message(session_id, "assistant", answer, user_id=user_id, channel=channel)
+        order_id = extract_order_id(message)
+        ticket_id = None
+        if should_create_ticket(message):
+            ticket_id = create_ticket(
+                message,
+                user_id=user_id,
+                order_id=order_id,
+                priority="高" if contains_any(message, ["投诉", "不满意", "太慢"]) else "普通",
+            )
+        for file_path in evidence_files or []:
+            save_evidence_file(
+                file_path,
+                user_id=user_id,
+                order_id=order_id,
+                ticket_id=ticket_id,
+                purpose="售后凭证",
+            )
+    except Exception as exc:
+        logger.info(json.dumps({
+            "timestamp": datetime.now().isoformat(),
+            "event": "app_database_record_failed",
             "error": str(exc),
         }, ensure_ascii=False))
 
@@ -569,40 +619,32 @@ def model_chat(message, history=None):
             "请只给通用性提醒，不要给专业诊断、法律结论或投资建议。"
         )
 
-    response = ollama_client.chat(
-        model=CHAT_MODEL_NAME,
+    content = chat_completion(
         messages=[
             {"role": "system", "content": GENERAL_CHAT_MESSAGE},
             *recent_messages,
             {"role": "user", "content": f"/no_think\n{prompt}"},
         ],
-        think=False,
-        options={
-            "temperature": 0.3,
-            "num_ctx": 2048,
-            "num_predict": 160,
-            "top_k": 30,
-            "top_p": 0.9,
-        },
-        keep_alive="30m",
+        temperature=0.3,
+        max_tokens=160,
     )
-    return clean_answer(response.message.content)
+    return clean_answer(content)
 
 
-def chat(message, history):
-    fast_answer = quick_answer(message, history)
+def chat(message, history, user_id=None, channel="web", session_id=None, evidence_files=None):
+    fast_answer = quick_answer(message, history, user_id=user_id)
     if fast_answer:
-        log_answer(message, fast_answer, "quick_answer")
+        log_answer(message, fast_answer, "quick_answer", user_id=user_id, channel=channel, session_id=session_id, evidence_files=evidence_files)
         return fast_answer
 
     learned_answer = find_learned_answer(message)
     if learned_answer:
-        log_answer(message, learned_answer, "learned_answer")
+        log_answer(message, learned_answer, "learned_answer", user_id=user_id, channel=channel, session_id=session_id, evidence_files=evidence_files)
         return learned_answer
 
     if not is_domain_question(message):
         answer = model_chat(message, history)
-        log_answer(message, answer, "general_model_chat")
+        log_answer(message, answer, "general_model_chat", user_id=user_id, channel=channel, session_id=session_id, evidence_files=evidence_files)
         return answer
 
     related_docs = retriever.invoke(message)
@@ -621,54 +663,229 @@ def chat(message, history):
 用户问题：
 {message}
 """
-    response = ollama_client.chat(
-        model=CHAT_MODEL_NAME,
+    content = chat_completion(
         messages=[
             {"role": "system", "content": SYSTEM_MESSAGE},
             {"role": "user", "content": prompt},
         ],
-        think=False,
-        options={
-            "temperature": 0.1,
-            "num_ctx": 2048,
-            "num_predict": 180,
-            "top_k": 20,
-            "top_p": 0.9,
-        },
-        keep_alive="30m",
+        temperature=0.1,
+        max_tokens=180,
     )
-    answer = clean_answer(response.message.content)
-    log_answer(message, answer, "rag_answer")
+    answer = clean_answer(content)
+    log_answer(message, answer, "rag_answer", user_id=user_id, channel=channel, session_id=session_id, evidence_files=evidence_files)
     return answer
 
 
-demo = gr.ChatInterface(
-    fn=chat,
-    type="messages",
-    title="小小易，星选商城售后客服",
-    description="按正式售后流程处理订单查询、物流、取消订单、退款、退货退款、换货、补发、催发货、改地址、拒收、价保、发票、投诉升级和人工客服登记。",
-    examples=[
-        "你能做什么？",
-        "正式售后客服标准流程是什么？",
-        "订单 EC20260702002 物流到哪了？",
-        "订单 EC20260702003 能取消吗？",
-        "订单 EC20260702003 怎么还不发货？",
-        "订单 EC20260702002 我想改地址",
-        "我想退货退款，需要怎么操作？",
-        "商品破损了怎么办？",
-        "少发了一件商品怎么办？",
-        "退款多久到账？",
-        "我要换货怎么处理？",
-        "我想申请价保",
-        "我要投诉，处理太慢了",
-        "我要转人工",
-    ],
-    textbox=gr.Textbox(placeholder="请输入订单号或售后问题...", container=False, scale=7),
-    submit_btn="发送",
-    stop_btn="停止",
-    analytics_enabled=False,
-)
+def rows_for_orders(user_id=None):
+    return [
+        [
+            item.get("order_id", ""),
+            item.get("product", ""),
+            item.get("status", ""),
+            item.get("logistics_no", ""),
+            item.get("detail", ""),
+        ]
+        for item in list_orders(user_id)
+    ]
+
+
+def rows_for_tickets():
+    return [
+        [
+            item.get("ticket_id", ""),
+            item.get("user_id", ""),
+            item.get("order_id", ""),
+            item.get("category", ""),
+            item.get("status", ""),
+            item.get("priority", ""),
+            item.get("latest_progress", ""),
+            item.get("updated_at", ""),
+        ]
+        for item in list_tickets()
+    ]
+
+
+def rows_for_conversations():
+    return [
+        [
+            item.get("created_at", ""),
+            item.get("channel", ""),
+            item.get("user_id", ""),
+            item.get("session_id", ""),
+            item.get("role", ""),
+            item.get("content", ""),
+        ]
+        for item in list_conversations()
+    ]
+
+
+def rows_for_evidence():
+    return [
+        [
+            item.get("created_at", ""),
+            item.get("user_id", ""),
+            item.get("order_id", ""),
+            item.get("ticket_id", ""),
+            item.get("original_name", ""),
+            item.get("saved_path", ""),
+        ]
+        for item in list_evidence_files()
+    ]
+
+
+def login_user(phone, password):
+    user = get_user_by_phone((phone or "").strip(), (password or "").strip())
+    if not user:
+        return None, "登录失败，请使用示例手机号 13800000001 / 密码 123456。", [], []
+
+    status = f"已登录：{user['name']}（{user['phone']}）"
+    return user, status, rows_for_orders(user["user_id"]), [
+        {"role": "assistant", "content": f"你好，{user['name']}。我是小小易，可以帮你处理订单、物流、退款、退货、换货和投诉等售后问题。"}
+    ]
+
+
+def normalize_uploaded_files(files):
+    if not files:
+        return []
+    if not isinstance(files, list):
+        files = [files]
+
+    paths = []
+    for item in files:
+        if isinstance(item, str):
+            paths.append(item)
+        elif hasattr(item, "name"):
+            paths.append(item.name)
+        elif isinstance(item, dict) and item.get("path"):
+            paths.append(item["path"])
+    return paths
+
+
+def send_message_ui(message, history, user, files):
+    text = (message or "").strip()
+    if not text and not files:
+        return history, "", None, rows_for_orders(user.get("user_id") if user else None)
+
+    user_id = user.get("user_id") if user else None
+    uploaded_paths = normalize_uploaded_files(files)
+    evidence_note = ""
+    if uploaded_paths:
+        names = "、".join(Path(path).name for path in uploaded_paths)
+        evidence_note = f"\n用户已上传售后凭证：{names}"
+
+    ask_text = text or "我上传了售后凭证，请帮我登记处理。"
+    answer = chat(
+        ask_text + evidence_note,
+        history or [],
+        user_id=user_id,
+        channel="web",
+        session_id=user_id or "web_guest",
+        evidence_files=uploaded_paths,
+    )
+    updated = (history or []) + [
+        {"role": "user", "content": ask_text},
+        {"role": "assistant", "content": answer},
+    ]
+    return updated, "", None, rows_for_orders(user_id)
+
+
+def refresh_backend():
+    return rows_for_tickets(), rows_for_conversations(), rows_for_evidence()
+
+
+def build_demo():
+    with gr.Blocks(title="小小易，星选商城售后客服", analytics_enabled=False) as app:
+        user_state = gr.State(None)
+        gr.Markdown("# 小小易，星选商城售后客服")
+
+        with gr.Tabs():
+            with gr.Tab("用户客服"):
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("### 用户登录")
+                        phone = gr.Textbox(label="手机号", value="13800000001")
+                        password = gr.Textbox(label="密码", value="123456", type="password")
+                        login_btn = gr.Button("登录")
+                        login_status = gr.Markdown("未登录")
+                        orders_table = gr.Dataframe(
+                            headers=["订单号", "商品", "状态", "物流单号", "详情"],
+                            value=[],
+                            row_count=5,
+                            col_count=(5, "fixed"),
+                            label="我的订单",
+                        )
+                    with gr.Column(scale=2):
+                        chatbot = gr.Chatbot(type="messages", height=520, label="客服对话")
+                        files = gr.File(
+                            label="上传售后凭证（破损、错发、少件等）",
+                            file_count="multiple",
+                        )
+                        message = gr.Textbox(
+                            placeholder="请输入订单号或售后问题...",
+                            label="用户输入",
+                        )
+                        send_btn = gr.Button("发送")
+
+                        gr.Examples(
+                            examples=[
+                                "订单 EC20260702002 物流到哪了？",
+                                "订单 EC20260702003 怎么还不发货？",
+                                "订单 EC20260702002 我想改地址",
+                                "商品破损了怎么办？",
+                                "我要投诉，处理太慢了",
+                            ],
+                            inputs=message,
+                        )
+
+            with gr.Tab("后台管理"):
+                gr.Markdown("### 工单、会话和凭证")
+                refresh_btn = gr.Button("刷新后台数据")
+                tickets_table = gr.Dataframe(
+                    headers=["工单号", "用户", "订单号", "类型", "状态", "优先级", "进度", "更新时间"],
+                    value=rows_for_tickets(),
+                    label="工单列表",
+                )
+                conversations_table = gr.Dataframe(
+                    headers=["时间", "渠道", "用户", "会话", "角色", "内容"],
+                    value=rows_for_conversations(),
+                    label="会话记录",
+                )
+                evidence_table = gr.Dataframe(
+                    headers=["时间", "用户", "订单号", "工单号", "原文件名", "保存路径"],
+                    value=rows_for_evidence(),
+                    label="售后凭证",
+                )
+
+        login_btn.click(
+            login_user,
+            inputs=[phone, password],
+            outputs=[user_state, login_status, orders_table, chatbot],
+            api_name=False,
+        )
+        send_btn.click(
+            send_message_ui,
+            inputs=[message, chatbot, user_state, files],
+            outputs=[chatbot, message, files, orders_table],
+            api_name=False,
+        )
+        message.submit(
+            send_message_ui,
+            inputs=[message, chatbot, user_state, files],
+            outputs=[chatbot, message, files, orders_table],
+            api_name=False,
+        )
+        refresh_btn.click(
+            refresh_backend,
+            inputs=[],
+            outputs=[tickets_table, conversations_table, evidence_table],
+            api_name=False,
+        )
+
+    return app
+
+
+demo = build_demo()
 
 
 if __name__ == "__main__":
-    demo.launch(share=False)
+    demo.launch(share=False, server_name="0.0.0.0", server_port=7860)

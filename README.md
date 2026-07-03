@@ -10,7 +10,11 @@
 - 使用 **规则快速回复 + RAG 知识库检索 + 本地大模型生成** 的混合方案，兼顾响应速度和回答覆盖面。
 - 使用 **Chroma 向量数据库** 保存售后知识库，支持基于语义相似度检索相关资料。
 - 使用 **Ollama + qwen3:4b** 在本地运行大模型，减少对外部 API 的依赖。
+- 支持 **DeepSeek API**，配置 `DEEPSEEK_API_KEY` 后优先调用 DeepSeek，失败时自动回退本地 Ollama。
 - 支持 **微信公众号测试号** 接入，用户可以在微信中向“小小易”发送售后问题。
+- 支持 **订单数据库、用户登录、订单列表、工单系统和后台管理页面**。
+- 支持 **图片凭证上传**，用于破损、错发、少件、质量问题等售后凭证记录。
+- 支持 **微信会话历史持久化**，服务重启后仍能从数据库读取最近上下文。
 - 支持 **问答学习记录**：自动把用户问题和客服回答保存为 Excel，并在配置 MySQL 后同步写入数据库。
 - 支持 **本地学习缓存**：大模型兜底回答会被记录为可复用问答，后续相同问题可优先从缓存回复，减少重复调用大模型。
 - 针对正式售后客服流程设计回复结构：确认诉求、核验订单、判断状态、给出方案、说明时效、引导下一步。
@@ -37,6 +41,9 @@
 - 发票咨询
 - 投诉升级
 - 人工客服登记
+- 用户登录和订单列表
+- 售后凭证图片上传
+- 客服后台查看工单、会话和凭证
 - 简单日常交流
 
 示例问题：
@@ -62,10 +69,11 @@
 | Web 界面 | Gradio |
 | 后端接口 | FastAPI、Uvicorn |
 | 微信接入 | 微信公众号测试号、XML 消息回调 |
+| 应用数据库 | SQLite 默认、本地 MySQL 可选 |
 | 知识库检索 | RAG |
 | 向量数据库 | Chroma |
 | Embedding 模型 | nomic-embed-text |
-| 本地大模型 | Ollama、qwen3:4b |
+| 大模型 | DeepSeek API、Ollama、qwen3:4b |
 | 问答记录 | openpyxl、Excel |
 | 数据库存储 | MySQL、PyMySQL |
 | 测试 | smoke_test.py 冒烟测试 |
@@ -75,7 +83,8 @@
 ```mermaid
 flowchart TD
     A["用户输入问题"] --> B["Gradio 网页或微信公众号"]
-    B --> C["chat() 统一入口"]
+    B --> P["用户/微信会话数据持久化"]
+    P --> C["chat() 统一入口"]
     C --> D{"是否命中高频规则"}
     D -->|是| E["规则快速回复"]
     D -->|否| F{"是否售后领域问题"}
@@ -92,6 +101,64 @@ flowchart TD
     M --> O
     J --> O
     O --> K["返回用户"]
+```
+
+## 数据库与业务模块
+
+项目新增 `app_database.py`，用于统一管理业务数据。
+
+默认情况下，系统会使用本地 SQLite 数据库：
+
+```text
+data/xiaoxiaoyi_app.db
+```
+
+当前数据库保存：
+
+- 用户信息
+- 订单信息
+- 工单记录
+- 网页/微信会话记录
+- 售后凭证文件记录
+
+如果要切换到 MySQL，可以设置：
+
+```shell
+$env:APP_DB_BACKEND="mysql"
+$env:MYSQL_HOST="127.0.0.1"
+$env:MYSQL_PORT="3306"
+$env:MYSQL_USER="root"
+$env:MYSQL_PASSWORD="你的MySQL密码"
+$env:MYSQL_DATABASE="xiaoxiaoyi_chatbot"
+```
+
+然后启动：
+
+```shell
+.conda\python.exe main.py
+```
+
+系统会自动创建所需数据表。
+
+## DeepSeek 配置
+
+项目默认本地 Ollama 可用。若要优先使用 DeepSeek，在启动前设置：
+
+```shell
+$env:DEEPSEEK_API_KEY="你的DeepSeek Key"
+$env:LLM_PROVIDER="auto"
+```
+
+说明：
+
+- `LLM_PROVIDER=auto`：有 DeepSeek Key 时优先 DeepSeek，失败后回退 Ollama。
+- `LLM_PROVIDER=ollama`：只使用本地 Ollama。
+- `LLM_PROVIDER=deepseek_strict`：只使用 DeepSeek，失败就报错。
+
+可选模型名：
+
+```shell
+$env:DEEPSEEK_MODEL="deepseek-chat"
 ```
 
 ## 核心流程说明
@@ -189,7 +256,9 @@ customer-chatbot-demo-agent-rag-langchain
 ├── docs/                          # 电商售后知识库资料
 ├── chroma/                        # Chroma 本地向量数据库
 ├── main.py                        # Gradio 网页和客服主逻辑
+├── app_database.py                # 用户、订单、工单、会话和凭证数据层
 ├── learning_store.py              # 问答记录、Excel/MySQL 写入和学习缓存
+├── model_provider.py              # DeepSeek / Ollama 大模型调用封装
 ├── prepare_chroma.py              # 重新生成知识库索引
 ├── smoke_test.py                  # 功能冒烟测试
 ├── wechat_server.py               # 微信公众号回调服务
@@ -217,6 +286,20 @@ cd /d D:\customer-chatbot-demo-agent-rag-langchain
 
 ```text
 http://127.0.0.1:7860
+```
+
+默认测试账号：
+
+```text
+手机号：13800000001
+密码：123456
+```
+
+另一个测试账号：
+
+```text
+手机号：13800000002
+密码：123456
 ```
 
 ## 重新生成知识库
@@ -283,6 +366,7 @@ $env:LEARNING_DELETE_AFTER_LEARNED="1"
 - 多轮上下文承接
 - 确认语不重复订单结果
 - 高风险问题兜底提醒
+- 数据库订单查询、工单登记和会话保存
 
 ## 简历写法
 
@@ -295,7 +379,7 @@ $env:LEARNING_DELETE_AFTER_LEARNED="1"
 项目描述：
 
 ```text
-基于 Python、Gradio、Chroma、Ollama 和 RAG 实现电商售后智能客服系统，模拟电商平台售后客服“小小易”。系统支持订单查询、物流查询、取消订单、退款、退货退款、换货、补发、催发货、修改地址、拒收、价保、发票咨询、投诉升级和人工客服登记。项目采用规则快速回复处理高频问题，结合 Chroma 向量数据库和本地大模型完成知识库问答，并通过 FastAPI 接入微信公众号测试号，实现网页端和微信端双入口客服体验。
+基于 Python、Gradio、FastAPI、SQLite/MySQL、Chroma、Ollama、DeepSeek API 和 RAG 实现电商售后智能客服系统，模拟电商平台售后客服“小小易”。系统支持用户登录、订单列表、订单查询、物流查询、取消订单、退款、退货退款、换货、补发、催发货、修改地址、拒收、价保、发票咨询、投诉升级、人工客服登记、图片凭证上传和后台工单管理。项目采用规则快速回复处理高频问题，结合 Chroma 向量数据库和大模型完成知识库问答，并通过 FastAPI 接入微信公众号测试号，实现网页端和微信端双入口客服体验。
 ```
 
 职责描述：
@@ -305,8 +389,10 @@ $env:LEARNING_DELETE_AFTER_LEARNED="1"
 2. 设计规则快速回复模块，提升高频售后问题响应速度，并优化多轮上下文承接。
 3. 构建本地售后知识库，使用 Chroma 和 Embedding 模型实现语义检索。
 4. 接入 Ollama 本地大模型，对复杂售后问题进行 RAG 问答生成。
-5. 使用 Gradio 搭建中文客服演示页面，并使用 FastAPI 对接微信公众号测试号。
-6. 编写冒烟测试覆盖核心售后场景，验证系统回复完整性和稳定性。
+5. 接入 DeepSeek API 作为优先大模型服务，并保留 Ollama 本地模型回退方案。
+6. 使用 Gradio 搭建中文客服演示页面、用户登录、订单列表和后台管理页面，并使用 FastAPI 对接微信公众号测试号。
+7. 设计工单、会话和图片凭证数据表，支持投诉、人工客服、物流核查、退款进度和凭证审核记录。
+8. 编写冒烟测试覆盖核心售后场景，验证系统回复完整性和稳定性。
 ```
 
 ## 可继续扩展

@@ -7,13 +7,13 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse, Response
 
+from app_database import get_recent_messages
 from main import chat
 
 
 WECHAT_TOKEN = os.environ.get("WECHAT_TOKEN", "xiaoxiaoyi_token")
 
 app = FastAPI(title="XiaoXiaoYi WeChat Server")
-wechat_histories = {}
 
 
 def check_signature(signature, timestamp, nonce):
@@ -25,8 +25,7 @@ def check_signature(signature, timestamp, nonce):
 
 def parse_wechat_message(xml_text):
     root = ET.fromstring(xml_text)
-    data = {child.tag: child.text or "" for child in root}
-    return data
+    return {child.tag: child.text or "" for child in root}
 
 
 def build_text_reply(to_user, from_user, content):
@@ -43,14 +42,7 @@ def build_text_reply(to_user, from_user, content):
 
 
 def get_history(openid):
-    return wechat_histories.setdefault(openid, [])
-
-
-def save_history(openid, user_text, assistant_text):
-    history = get_history(openid)
-    history.append({"role": "user", "content": user_text})
-    history.append({"role": "assistant", "content": assistant_text})
-    del history[:-12]
+    return get_recent_messages(f"wechat:{openid}", limit=12)
 
 
 @app.get("/wechat")
@@ -87,11 +79,16 @@ async def receive_wechat_message(request: Request):
         reply = "请发送订单号或售后问题，小小易会帮你处理。"
     else:
         try:
-            reply = chat(user_text, get_history(from_user))
+            reply = chat(
+                user_text,
+                get_history(from_user),
+                user_id=from_user,
+                channel="wechat",
+                session_id=f"wechat:{from_user}",
+            )
         except Exception:
             reply = "小小易暂时处理失败，请稍后再试，或换一种说法描述你的售后问题。"
 
-    save_history(from_user, user_text, reply)
     return Response(
         content=build_text_reply(from_user, to_user, reply),
         media_type="application/xml; charset=utf-8",
