@@ -9,6 +9,8 @@ from langchain_chroma import Chroma
 from langchain_ollama import OllamaEmbeddings
 from ollama import Client
 
+from learning_store import find_learned_answer, record_qa
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -541,6 +543,14 @@ def log_answer(message, answer, mode):
         "content": answer,
         "mode": mode,
     }, ensure_ascii=False))
+    try:
+        record_qa(message, answer, mode)
+    except Exception as exc:
+        logger.info(json.dumps({
+            "timestamp": datetime.now().isoformat(),
+            "event": "learning_record_failed",
+            "error": str(exc),
+        }, ensure_ascii=False))
 
 
 def model_chat(message, history=None):
@@ -584,6 +594,11 @@ def chat(message, history):
     if fast_answer:
         log_answer(message, fast_answer, "quick_answer")
         return fast_answer
+
+    learned_answer = find_learned_answer(message)
+    if learned_answer:
+        log_answer(message, learned_answer, "learned_answer")
+        return learned_answer
 
     if not is_domain_question(message):
         answer = model_chat(message, history)
@@ -629,6 +644,7 @@ def chat(message, history):
 
 demo = gr.ChatInterface(
     fn=chat,
+    type="messages",
     title="小小易，星选商城售后客服",
     description="按正式售后流程处理订单查询、物流、取消订单、退款、退货退款、换货、补发、催发货、改地址、拒收、价保、发票、投诉升级和人工客服登记。",
     examples=[

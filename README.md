@@ -11,6 +11,8 @@
 - 使用 **Chroma 向量数据库** 保存售后知识库，支持基于语义相似度检索相关资料。
 - 使用 **Ollama + qwen3:4b** 在本地运行大模型，减少对外部 API 的依赖。
 - 支持 **微信公众号测试号** 接入，用户可以在微信中向“小小易”发送售后问题。
+- 支持 **问答学习记录**：自动把用户问题和客服回答保存为 Excel，并在配置 MySQL 后同步写入数据库。
+- 支持 **本地学习缓存**：大模型兜底回答会被记录为可复用问答，后续相同问题可优先从缓存回复，减少重复调用大模型。
 - 针对正式售后客服流程设计回复结构：确认诉求、核验订单、判断状态、给出方案、说明时效、引导下一步。
 - 增加多轮上下文处理，避免用户说“好的”时重复上一条订单结果。
 - 增加自动化冒烟测试，覆盖常见售后问题、闲聊、上下文承接和兜底回复。
@@ -64,6 +66,8 @@
 | 向量数据库 | Chroma |
 | Embedding 模型 | nomic-embed-text |
 | 本地大模型 | Ollama、qwen3:4b |
+| 问答记录 | openpyxl、Excel |
+| 数据库存储 | MySQL、PyMySQL |
 | 测试 | smoke_test.py 冒烟测试 |
 
 ## 系统架构
@@ -75,13 +79,19 @@ flowchart TD
     C --> D{"是否命中高频规则"}
     D -->|是| E["规则快速回复"]
     D -->|否| F{"是否售后领域问题"}
-    F -->|否| G["通用大模型闲聊回复"]
-    F -->|是| H["Chroma 检索售后知识库"]
-    H --> I["拼接上下文 Prompt"]
+    F -->|否| G{"是否命中学习缓存"}
+    G -->|是| L["复用已学习答案"]
+    G -->|否| M["通用大模型闲聊回复"]
+    F -->|是| H{"是否命中学习缓存"}
+    H -->|是| L
+    H -->|否| N["Chroma 检索售后知识库"]
+    N --> I["拼接上下文 Prompt"]
     I --> J["Ollama 本地大模型生成答案"]
-    E --> K["返回用户"]
-    G --> K
-    J --> K
+    E --> O["记录问答到 Excel / MySQL"]
+    L --> O
+    M --> O
+    J --> O
+    O --> K["返回用户"]
 ```
 
 ## 核心流程说明
@@ -158,6 +168,20 @@ FastAPI 接口 /wechat
 用户在微信中收到回复
 ```
 
+### 5. 自动学习记录
+
+项目新增 `learning_store.py`，用于记录和复用问答。
+
+工作方式：
+
+1. 用户每次提问后，系统都会把“问题、回答、来源、状态、时间”保存到 `data/qa_learning_records.xlsx`。
+2. 如果开启 MySQL 配置，系统会同步写入 `qa_learning_records` 表。
+3. 如果某个问题没有命中规则，而是调用了大模型或 RAG 生成答案，系统会把该问答加入 `data/learned_qa.jsonl`。
+4. 用户后续再次问到完全相同的问题时，系统会优先复用本地已学习答案，减少重复调用大模型。
+5. 如果设置 `LEARNING_DELETE_AFTER_LEARNED=1`，模型兜底答案被学习后，会从 Excel/MySQL 的临时记录中清理，只保留轻量学习缓存。
+
+> 注意：正式生产环境不建议让系统无审核地学习所有大模型答案，因为大模型可能答错。更稳的做法是把新问答标记为待审核，经人工确认后再进入正式知识库。
+
 ## 项目目录
 
 ```text
@@ -165,6 +189,7 @@ customer-chatbot-demo-agent-rag-langchain
 ├── docs/                          # 电商售后知识库资料
 ├── chroma/                        # Chroma 本地向量数据库
 ├── main.py                        # Gradio 网页和客服主逻辑
+├── learning_store.py              # 问答记录、Excel/MySQL 写入和学习缓存
 ├── prepare_chroma.py              # 重新生成知识库索引
 ├── smoke_test.py                  # 功能冒烟测试
 ├── wechat_server.py               # 微信公众号回调服务
@@ -208,6 +233,43 @@ cd /d D:\customer-chatbot-demo-agent-rag-langchain
 ```shell
 cd /d D:\customer-chatbot-demo-agent-rag-langchain
 .conda\python.exe smoke_test.py
+```
+
+## MySQL 学习记录配置
+
+Excel 记录默认自动开启，文件会生成在：
+
+```text
+data\qa_learning_records.xlsx
+```
+
+如果要同步写入 MySQL，需要先启动 MySQL，并设置环境变量：
+
+```shell
+$env:LEARNING_MYSQL_ENABLED="1"
+$env:MYSQL_HOST="127.0.0.1"
+$env:MYSQL_PORT="3306"
+$env:MYSQL_USER="root"
+$env:MYSQL_PASSWORD="你的MySQL密码"
+$env:MYSQL_DATABASE="xiaoxiaoyi_chatbot"
+```
+
+然后启动项目：
+
+```shell
+.conda\python.exe main.py
+```
+
+系统会自动创建数据库和表：
+
+```text
+qa_learning_records
+```
+
+如果希望“大模型答案学会后清理临时记录”，可以额外设置：
+
+```shell
+$env:LEARNING_DELETE_AFTER_LEARNED="1"
 ```
 
 测试覆盖：
@@ -256,3 +318,4 @@ cd /d D:\customer-chatbot-demo-agent-rag-langchain
 - 支持图片上传，用于破损、错发、少件等售后凭证审核。
 - 接入真实大模型 API，例如 OpenAI、通义千问、智谱、DeepSeek 等。
 - 使用 Redis 或数据库保存微信用户聊天记录，避免服务重启后上下文丢失。
+- 增加人工审核后台，把大模型生成的新问答审核后再写入正式知识库。
