@@ -1,4 +1,5 @@
 ﻿import json
+import html
 import logging
 import os
 import re
@@ -118,6 +119,53 @@ footer {
   max-width: 980px;
   margin: 0 auto;
   box-shadow: none;
+}
+
+.customer-layout {
+  align-items: stretch !important;
+  gap: 22px !important;
+}
+
+.history-sidebar {
+  background: #f8fafc;
+  border-right: 1px solid var(--line);
+  min-height: calc(100dvh - 132px);
+  padding: 14px 12px;
+}
+
+.history-title {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 16px 0 8px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-item {
+  background: #ffffff;
+  border: 1px solid #edf0f5;
+  border-radius: 10px;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.45;
+  padding: 9px 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.new-chat-btn button {
+  min-height: 42px !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  border: 1px solid var(--line) !important;
+  color: var(--text) !important;
+  font-weight: 600 !important;
 }
 
 .home-stage {
@@ -328,6 +376,16 @@ footer {
     padding: 0 0 12px;
   }
 
+  .customer-layout {
+    gap: 10px !important;
+  }
+
+  .history-sidebar {
+    min-height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
   .home-stage {
     min-height: calc(100dvh - 170px);
     gap: 26px;
@@ -497,6 +555,8 @@ chat_history = []
 
 IDENTITY_ANSWER = """我是小小易，星选商城的智能售后客服。
 我可以和你做简单交流，也可以帮你处理订单、物流、退款、退货退款、换货、补发、破损少件、发票和人工客服登记等售后问题。"""
+
+REAL_PERSON_ANSWER = "我是星选商城售后客服-小小易，我不是真人，我是一个智能客服。"
 
 SMALL_TALK_ANSWERS = {
     "谢谢": "不客气，我是小小易，有售后问题随时找我。",
@@ -739,6 +799,8 @@ def quick_answer(message, history=None, user_id=None):
 
     if text in ["你好", "您好", "hi", "hello", "在吗"]:
         return f"你好，我是{SHOP_NAME}售后客服 小小易。你可以问我订单查询、物流、退款、退货退款、换货、补发、破损少件或发票问题。"
+    if contains_any(text, ["你是真人吗", "是真人吗", "真人吗", "你是真人", "你是人工吗"]):
+        return REAL_PERSON_ANSWER
     if contains_any(text, ["你是谁", "你叫什么", "叫什么名字", "你是机器人", "你是真人吗", "介绍一下自己", "自我介绍"]):
         return IDENTITY_ANSWER
     if contains_any(text, ["能聊天吗", "可以聊天吗", "陪我聊", "闲聊"]):
@@ -1044,6 +1106,30 @@ def rows_for_evidence():
     ]
 
 
+def history_sidebar_html(limit=12):
+    items = []
+    seen = set()
+    for item in list_conversations(limit=80):
+        if item.get("role") != "user":
+            continue
+        content = (item.get("content") or "").strip()
+        if not content or content in seen:
+            continue
+        seen.add(content)
+        items.append(content)
+        if len(items) >= limit:
+            break
+
+    if not items:
+        body = '<div class="history-item">暂无历史对话</div>'
+    else:
+        body = "\n".join(
+            f'<div class="history-item">{html.escape(text[:42])}</div>'
+            for text in items
+        )
+    return f'<div class="history-title">历史对话</div><div class="history-list">{body}</div>'
+
+
 def service_overview_html(user_id=None):
     return ""
 
@@ -1099,7 +1185,15 @@ def send_message_ui(message, history, user, files):
     text = (message or "").strip()
     if not text and not files:
         user_id = user.get("user_id") if user else None
-        return gr.update(value=history or [], visible=bool(history)), "", None, rows_for_orders(user_id), service_overview_html(user_id)
+        return (
+            gr.update(value=history or [], visible=bool(history)),
+            "",
+            None,
+            rows_for_orders(user_id),
+            service_overview_html(user_id),
+            gr.update(visible=not bool(history)),
+            history_sidebar_html(),
+        )
 
     user_id = user.get("user_id") if user else None
     uploaded_paths = normalize_uploaded_files(files)
@@ -1121,7 +1215,28 @@ def send_message_ui(message, history, user, files):
         {"role": "user", "content": ask_text},
         {"role": "assistant", "content": answer},
     ]
-    return gr.update(value=updated, visible=True), "", gr.update(value=None, visible=False), rows_for_orders(user_id), service_overview_html(user_id)
+    return (
+        gr.update(value=updated, visible=True),
+        "",
+        gr.update(value=None, visible=False),
+        rows_for_orders(user_id),
+        service_overview_html(user_id),
+        gr.update(visible=False),
+        history_sidebar_html(),
+    )
+
+
+def reset_chat_ui(user):
+    user_id = user.get("user_id") if user else None
+    return (
+        gr.update(value=[], visible=False),
+        "",
+        gr.update(value=None, visible=False),
+        rows_for_orders(user_id),
+        service_overview_html(user_id),
+        gr.update(visible=True),
+        history_sidebar_html(),
+    )
 
 
 def refresh_backend():
@@ -1139,68 +1254,73 @@ def build_demo():
 
         with gr.Tabs():
             with gr.Tab("用户客服"):
-                with gr.Column(elem_classes="simple-shell"):
-                    gr.Markdown(
-                        f"### 小小易\n{demo_user_name}，已接入星选商城售后系统",
-                        elem_classes="simple-header",
-                    )
-                    overview = gr.HTML(service_overview_html(demo_user_id))
-                    orders_table = gr.State(rows_for_orders(demo_user_id))
-                    with gr.Column(elem_classes="home-stage"):
-                        with gr.Column(elem_classes="prompt-panel"):
-                            gr.HTML("<h2>我是小小易，有什么我能帮到你的吗？</h2>")
-                            with gr.Row(elem_classes="quick-action-row"):
-                                quick_logistics = gr.Button("订单 EC20260702002 物流到哪了？")
-                                quick_refund = gr.Button("我要申请退款")
-                                quick_exchange = gr.Button("我要换货")
-                                quick_evidence = gr.Button("商品破损了怎么办？")
-                                quick_handoff = gr.Button("我要转人工")
-                            with gr.Row(elem_classes="quick-action-row"):
-                                quick_cancel = gr.Button("订单还没发货，可以取消吗？")
-                                quick_address = gr.Button("已发货订单怎么改地址？")
-                                quick_invoice = gr.Button("我要开发票")
-                        with gr.Column(elem_classes="input-dock"):
-                            chatbot = gr.Chatbot(
-                                type="messages",
-                                height=560,
-                                label="客服对话",
-                                value=greeting,
-                                show_label=False,
-                                container=False,
-                                layout="bubble",
-                                bubble_full_width=False,
-                                elem_id="simple_chatbot",
-                                visible=False,
+                with gr.Row(elem_classes="customer-layout"):
+                    with gr.Column(scale=1, min_width=240, elem_classes="history-sidebar"):
+                        new_chat_btn = gr.Button("新对话", elem_classes="new-chat-btn")
+                        history_panel = gr.HTML(history_sidebar_html())
+                    with gr.Column(scale=4):
+                        with gr.Column(elem_classes="simple-shell"):
+                            gr.Markdown(
+                                f"### 小小易\n{demo_user_name}，已接入星选商城售后系统",
+                                elem_classes="simple-header",
                             )
-                            files = gr.File(
-                                label="上传售后凭证（照片、视频、快递面单等）",
-                                file_count="multiple",
-                                visible=False,
-                                elem_classes="simple-upload",
-                            )
-                            with gr.Row(elem_classes="simple-input-bar"):
-                                message = gr.Textbox(
-                                    placeholder="请输入订单号或售后问题...",
-                                    label="",
-                                    show_label=False,
-                                    scale=12,
-                                    max_lines=3,
-                                    elem_classes="simple-input",
-                                )
-                                upload_btn = gr.Button("+", scale=1, min_width=44, elem_classes="simple-plus-btn")
-                                send_btn = gr.Button("发送", scale=2, min_width=72, elem_classes="simple-send-btn")
+                            overview = gr.HTML(service_overview_html(demo_user_id))
+                            orders_table = gr.State(rows_for_orders(demo_user_id))
+                            with gr.Column(elem_classes="home-stage"):
+                                with gr.Column(elem_classes="prompt-panel") as prompt_panel:
+                                    gr.HTML("<h2>我是小小易，有什么我能帮到你的吗？</h2>")
+                                    with gr.Row(elem_classes="quick-action-row"):
+                                        quick_logistics = gr.Button("订单 EC20260702002 物流到哪了？")
+                                        quick_refund = gr.Button("我要申请退款")
+                                        quick_exchange = gr.Button("我要换货")
+                                        quick_evidence = gr.Button("商品破损了怎么办？")
+                                        quick_handoff = gr.Button("我要转人工")
+                                    with gr.Row(elem_classes="quick-action-row"):
+                                        quick_cancel = gr.Button("订单还没发货，可以取消吗？")
+                                        quick_address = gr.Button("已发货订单怎么改地址？")
+                                        quick_invoice = gr.Button("我要开发票")
+                                with gr.Column(elem_classes="input-dock"):
+                                    chatbot = gr.Chatbot(
+                                        type="messages",
+                                        height=560,
+                                        label="客服对话",
+                                        value=greeting,
+                                        show_label=False,
+                                        container=False,
+                                        layout="bubble",
+                                        bubble_full_width=False,
+                                        elem_id="simple_chatbot",
+                                        visible=False,
+                                    )
+                                    files = gr.File(
+                                        label="上传售后凭证（照片、视频、快递面单等）",
+                                        file_count="multiple",
+                                        visible=False,
+                                        elem_classes="simple-upload",
+                                    )
+                                    with gr.Row(elem_classes="simple-input-bar"):
+                                        message = gr.Textbox(
+                                            placeholder="请输入订单号或售后问题...",
+                                            label="",
+                                            show_label=False,
+                                            scale=12,
+                                            max_lines=3,
+                                            elem_classes="simple-input",
+                                        )
+                                        upload_btn = gr.Button("+", scale=1, min_width=44, elem_classes="simple-plus-btn")
+                                        send_btn = gr.Button("发送", scale=2, min_width=72, elem_classes="simple-send-btn")
 
-                            with gr.Accordion("常用问题", open=False, elem_classes="quick-questions"):
-                                gr.Examples(
-                                    examples=[
-                                        "订单 EC20260702002 物流到哪了？",
-                                        "订单 EC20260702003 怎么还不发货？",
-                                        "订单 EC20260702002 我想改地址",
-                                        "商品破损了怎么办？",
-                                        "我要投诉，处理太慢了",
-                                    ],
-                                    inputs=message,
-                                )
+                                    with gr.Accordion("常用问题", open=False, elem_classes="quick-questions"):
+                                        gr.Examples(
+                                            examples=[
+                                                "订单 EC20260702002 物流到哪了？",
+                                                "订单 EC20260702003 怎么还不发货？",
+                                                "订单 EC20260702002 我想改地址",
+                                                "商品破损了怎么办？",
+                                                "我要投诉，处理太慢了",
+                                            ],
+                                            inputs=message,
+                                        )
 
             with gr.Tab("后台管理"):
                 with gr.Column(elem_classes="backend-panel"):
@@ -1226,13 +1346,19 @@ def build_demo():
         send_btn.click(
             send_message_ui,
             inputs=[message, chatbot, user_state, files],
-            outputs=[chatbot, message, files, orders_table, overview],
+            outputs=[chatbot, message, files, orders_table, overview, prompt_panel, history_panel],
             api_name=False,
         )
         message.submit(
             send_message_ui,
             inputs=[message, chatbot, user_state, files],
-            outputs=[chatbot, message, files, orders_table, overview],
+            outputs=[chatbot, message, files, orders_table, overview, prompt_panel, history_panel],
+            api_name=False,
+        )
+        new_chat_btn.click(
+            reset_chat_ui,
+            inputs=[user_state],
+            outputs=[chatbot, message, files, orders_table, overview, prompt_panel, history_panel],
             api_name=False,
         )
         message.change(
