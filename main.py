@@ -1,5 +1,4 @@
 ﻿import json
-import html
 import logging
 import os
 import re
@@ -133,32 +132,6 @@ footer {
   padding: 14px 12px;
 }
 
-.history-title {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
-  margin: 16px 0 8px;
-}
-
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.history-item {
-  background: #ffffff;
-  border: 1px solid #edf0f5;
-  border-radius: 10px;
-  color: #374151;
-  font-size: 14px;
-  line-height: 1.45;
-  padding: 9px 10px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .new-chat-btn button {
   min-height: 42px !important;
   border-radius: 10px !important;
@@ -166,6 +139,46 @@ footer {
   border: 1px solid var(--line) !important;
   color: var(--text) !important;
   font-weight: 600 !important;
+}
+
+.history-radio {
+  margin-top: 14px;
+}
+
+.history-radio label > span {
+  color: var(--muted) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+.history-radio .wrap {
+  gap: 8px !important;
+}
+
+.history-radio input[type="radio"] {
+  display: none !important;
+}
+
+.history-radio label {
+  background: #ffffff !important;
+  border: 1px solid #edf0f5 !important;
+  border-radius: 10px !important;
+  color: #374151 !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+  margin: 0 0 8px !important;
+  min-height: 38px !important;
+  overflow: hidden !important;
+  padding: 9px 10px !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.history-radio label:has(input:checked) {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
 }
 
 .home-stage {
@@ -1106,7 +1119,7 @@ def rows_for_evidence():
     ]
 
 
-def history_sidebar_html(limit=12):
+def history_choices(limit=12):
     items = []
     seen = set()
     for item in list_conversations(limit=80):
@@ -1119,15 +1132,36 @@ def history_sidebar_html(limit=12):
         items.append(content)
         if len(items) >= limit:
             break
+    return items or ["暂无历史对话"]
 
-    if not items:
-        body = '<div class="history-item">暂无历史对话</div>'
-    else:
-        body = "\n".join(
-            f'<div class="history-item">{html.escape(text[:42])}</div>'
-            for text in items
-        )
-    return f'<div class="history-title">历史对话</div><div class="history-list">{body}</div>'
+
+def load_history_chat(selected):
+    if not selected or selected == "暂无历史对话":
+        return gr.update(value=[], visible=False), gr.update(visible=True), ""
+
+    rows = list(reversed(list_conversations(limit=300)))
+    match_index = None
+    for index, item in enumerate(rows):
+        if item.get("role") == "user" and (item.get("content") or "").strip() == selected:
+            match_index = index
+
+    if match_index is None:
+        return gr.update(value=[], visible=False), gr.update(visible=True), ""
+
+    snippet = []
+    for item in rows[match_index:]:
+        role = item.get("role")
+        content = (item.get("content") or "").strip()
+        if not content:
+            continue
+        if role == "user" and snippet:
+            break
+        if role in {"user", "assistant"}:
+            snippet.append({"role": role, "content": content})
+        if len(snippet) >= 2 and role == "assistant":
+            break
+
+    return gr.update(value=snippet, visible=True), gr.update(visible=False), ""
 
 
 def service_overview_html(user_id=None):
@@ -1192,7 +1226,7 @@ def send_message_ui(message, history, user, files):
             rows_for_orders(user_id),
             service_overview_html(user_id),
             gr.update(visible=not bool(history)),
-            history_sidebar_html(),
+            gr.update(choices=history_choices(), value=None),
         )
 
     user_id = user.get("user_id") if user else None
@@ -1222,7 +1256,7 @@ def send_message_ui(message, history, user, files):
         rows_for_orders(user_id),
         service_overview_html(user_id),
         gr.update(visible=False),
-        history_sidebar_html(),
+        gr.update(choices=history_choices(), value=None),
     )
 
 
@@ -1235,7 +1269,7 @@ def reset_chat_ui(user):
         rows_for_orders(user_id),
         service_overview_html(user_id),
         gr.update(visible=True),
-        history_sidebar_html(),
+        gr.update(choices=history_choices(), value=None),
     )
 
 
@@ -1257,7 +1291,12 @@ def build_demo():
                 with gr.Row(elem_classes="customer-layout"):
                     with gr.Column(scale=1, min_width=240, elem_classes="history-sidebar"):
                         new_chat_btn = gr.Button("新对话", elem_classes="new-chat-btn")
-                        history_panel = gr.HTML(history_sidebar_html())
+                        history_panel = gr.Radio(
+                            label="历史对话",
+                            choices=history_choices(),
+                            value=None,
+                            elem_classes="history-radio",
+                        )
                     with gr.Column(scale=4):
                         with gr.Column(elem_classes="simple-shell"):
                             gr.Markdown(
@@ -1359,6 +1398,12 @@ def build_demo():
             reset_chat_ui,
             inputs=[user_state],
             outputs=[chatbot, message, files, orders_table, overview, prompt_panel, history_panel],
+            api_name=False,
+        )
+        history_panel.change(
+            load_history_chat,
+            inputs=[history_panel],
+            outputs=[chatbot, prompt_panel, message],
             api_name=False,
         )
         message.change(
