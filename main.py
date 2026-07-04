@@ -100,10 +100,11 @@ footer {
 #app_title {
   color: var(--text);
   padding: 14px 4px 8px;
+  text-align: center;
 }
 
 #app_title h1 {
-  font-size: 25px;
+  font-size: 26px;
   font-weight: 700;
   margin: 0;
   letter-spacing: 0;
@@ -141,7 +142,7 @@ footer {
 }
 
 .prompt-panel {
-  padding: 70px 0 48px;
+  padding: 76px 0 42px;
   text-align: center;
 }
 
@@ -184,8 +185,9 @@ footer {
   background: #ffffff !important;
   border: 0 !important;
   border-radius: 12px !important;
-  min-height: 260px !important;
-  margin-bottom: 26px !important;
+  min-height: 180px !important;
+  margin: 0 auto 22px !important;
+  max-width: 780px;
 }
 
 #simple_chatbot .message {
@@ -207,24 +209,36 @@ footer {
 .simple-input-bar {
   align-items: center !important;
   gap: 10px !important;
-  max-width: 780px;
-  min-height: 104px;
+  max-width: 680px;
+  min-height: 68px;
   margin: 0 auto;
-  padding: 18px 22px !important;
+  padding: 10px 12px !important;
   background: #ffffff;
   border: 1px solid #bfdbfe;
-  border-radius: 24px;
-  box-shadow: 0 18px 45px rgba(37, 99, 235, 0.12);
+  border-radius: 18px;
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.11);
 }
 
 .simple-input textarea,
 .simple-input input {
   border: 0 !important;
   box-shadow: none !important;
-  border-radius: 12px !important;
-  min-height: 56px !important;
-  font-size: 18px !important;
+  border-radius: 14px !important;
+  min-height: 44px !important;
+  font-size: 15px !important;
   background: #ffffff !important;
+}
+
+.simple-input > label,
+.simple-input .container,
+.simple-input .wrap,
+.simple-input .block,
+.simple-input .form,
+.simple-input .input-container {
+  border: 0 !important;
+  box-shadow: none !important;
+  background: #ffffff !important;
+  border-radius: 14px !important;
 }
 
 .simple-plus-btn {
@@ -232,24 +246,24 @@ footer {
 }
 
 .simple-plus-btn button {
-  width: 46px !important;
-  height: 46px !important;
-  border-radius: 50% !important;
-  font-size: 26px !important;
-  background: #ffffff !important;
+  width: 48px !important;
+  height: 44px !important;
+  border-radius: 12px !important;
+  font-size: 20px !important;
+  background: #f3f4f6 !important;
   color: var(--text) !important;
   border: 0 !important;
 }
 
 .simple-send-btn button {
-  height: 46px !important;
-  border-radius: 999px !important;
+  height: 44px !important;
+  border-radius: 12px !important;
   border: 0 !important;
-  background: #f3f4f6 !important;
+  background: #e5e7eb !important;
   color: #111111 !important;
   font-size: 15px !important;
   font-weight: 700 !important;
-  min-width: 96px !important;
+  min-width: 82px !important;
 }
 
 .quick-questions {
@@ -304,8 +318,9 @@ footer {
   }
 
   .simple-input-bar {
-    min-height: 92px;
-    padding: 14px !important;
+    max-width: 100%;
+    min-height: 64px;
+    padding: 10px !important;
     border-radius: 18px;
   }
 }
@@ -1060,7 +1075,7 @@ def send_message_ui(message, history, user, files):
     text = (message or "").strip()
     if not text and not files:
         user_id = user.get("user_id") if user else None
-        return history, "", None, rows_for_orders(user_id), service_overview_html(user_id)
+        return gr.update(value=history or [], visible=bool(history)), "", None, rows_for_orders(user_id), service_overview_html(user_id)
 
     user_id = user.get("user_id") if user else None
     uploaded_paths = normalize_uploaded_files(files)
@@ -1082,7 +1097,7 @@ def send_message_ui(message, history, user, files):
         {"role": "user", "content": ask_text},
         {"role": "assistant", "content": answer},
     ]
-    return updated, "", gr.update(value=None, visible=False), rows_for_orders(user_id), service_overview_html(user_id)
+    return gr.update(value=updated, visible=True), "", gr.update(value=None, visible=False), rows_for_orders(user_id), service_overview_html(user_id)
 
 
 def refresh_backend():
@@ -1093,12 +1108,7 @@ def build_demo():
     demo_user = default_demo_user()
     demo_user_id = demo_user.get("user_id") if demo_user else None
     demo_user_name = demo_user.get("name", "用户") if demo_user else "用户"
-    greeting = [
-        {
-            "role": "assistant",
-            "content": f"你好，{demo_user_name}。我是小小易，可以直接帮你处理订单、物流、退款、退货、换货、投诉和转人工等售后问题。",
-        }
-    ]
+    greeting = []
     with gr.Blocks(title="小小易，星选商城售后客服", analytics_enabled=False, css=APP_CSS) as app:
         user_state = gr.State(demo_user)
         gr.Markdown("# 小小易，星选商城售后客服", elem_id="app_title")
@@ -1111,16 +1121,9 @@ def build_demo():
                         elem_classes="simple-header",
                     )
                     overview = gr.HTML(service_overview_html(demo_user_id))
-                    with gr.Accordion("我的订单", open=False, elem_classes="simple-orders"):
-                        orders_table = gr.Dataframe(
-                            headers=["订单号", "商品", "状态", "物流单号", "详情"],
-                            value=rows_for_orders(demo_user_id),
-                            row_count=5,
-                            col_count=(5, "fixed"),
-                            label="我的订单",
-                        )
+                    orders_table = gr.State(rows_for_orders(demo_user_id))
                     with gr.Column(elem_classes="prompt-panel"):
-                        gr.HTML("<h2>有什么我能帮你的吗？</h2>")
+                        gr.HTML("<h2>我是小小易，有什么我能帮到你的吗？</h2>")
                         with gr.Row(elem_classes="quick-action-row"):
                             quick_logistics = gr.Button("订单 EC20260702002 物流到哪了？")
                             quick_refund = gr.Button("我要申请退款")
@@ -1141,6 +1144,7 @@ def build_demo():
                         layout="bubble",
                         bubble_full_width=False,
                         elem_id="simple_chatbot",
+                        visible=False,
                     )
                     files = gr.File(
                         label="上传售后凭证（照片、视频、快递面单等）",
