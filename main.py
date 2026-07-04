@@ -68,12 +68,17 @@ DEFAULT_DEMO_PASSWORD = "123456"
 
 APP_CSS = """
 :root {
-  --page-bg: #f5f7fb;
+  --page-bg: #f3f4f6;
   --panel-bg: #ffffff;
+  --panel-soft: #f8fafc;
   --line: #e5e7eb;
   --text: #111827;
   --muted: #6b7280;
-  --brand: #2563eb;
+  --brand: #0f172a;
+  --brand-2: #2563eb;
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger: #dc2626;
 }
 
 body,
@@ -82,8 +87,9 @@ body,
 }
 
 .gradio-container {
-  max-width: 1080px !important;
+  max-width: 1180px !important;
   margin: 0 auto !important;
+  padding: 0 14px 20px !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif !important;
 }
 
@@ -93,28 +99,30 @@ footer {
 
 #app_title {
   color: var(--text);
-  padding: 14px 4px 8px;
+  padding: 14px 4px 10px;
 }
 
 #app_title h1 {
-  font-size: 24px;
-  font-weight: 650;
+  font-size: 25px;
+  font-weight: 700;
   margin: 0;
+  letter-spacing: 0;
 }
 
 .simple-shell {
   background: var(--panel-bg);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 14px;
-  max-width: 900px;
+  border-radius: 10px;
+  padding: 16px;
+  max-width: 1040px;
   margin: 0 auto;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.07);
 }
 
 .simple-header {
-  padding: 2px 2px 12px;
-  border-bottom: 1px solid var(--line);
+  background: var(--brand);
+  border-radius: 8px;
+  padding: 14px 16px;
   margin-bottom: 12px;
 }
 
@@ -125,20 +133,75 @@ footer {
 
 .simple-header h3 {
   font-size: 18px !important;
-  font-weight: 650 !important;
-  color: var(--text) !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
 }
 
 .simple-header p {
   margin-top: 4px !important;
   font-size: 13px !important;
-  color: var(--muted) !important;
+  color: #cbd5e1 !important;
+}
+
+.service-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.metric-card {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.metric-label {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.metric-value {
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.metric-note {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.quick-action-row {
+  gap: 8px !important;
+  margin-bottom: 10px;
+}
+
+.quick-action-row button {
+  min-height: 40px !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--line) !important;
+  background: #ffffff !important;
+  color: var(--text) !important;
+  font-size: 14px !important;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.quick-action-row button:hover {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: var(--brand-2) !important;
 }
 
 #simple_chatbot {
   background: #fafafa !important;
   border: 1px solid var(--line) !important;
   border-radius: 8px !important;
+  min-height: 520px !important;
 }
 
 #simple_chatbot .message {
@@ -146,8 +209,8 @@ footer {
   box-shadow: none !important;
   color: var(--text) !important;
   font-size: 15px !important;
-  line-height: 1.55 !important;
-  padding: 10px 12px !important;
+  line-height: 1.6 !important;
+  padding: 11px 13px !important;
 }
 
 .simple-upload {
@@ -157,7 +220,7 @@ footer {
 .simple-input-bar {
   align-items: center !important;
   gap: 8px !important;
-  padding-top: 10px !important;
+  padding-top: 12px !important;
 }
 
 .simple-input textarea,
@@ -185,9 +248,10 @@ footer {
   height: 44px !important;
   border-radius: 8px !important;
   border: 0 !important;
-  background: var(--brand) !important;
+  background: var(--brand-2) !important;
   color: #ffffff !important;
   font-size: 15px !important;
+  font-weight: 600 !important;
 }
 
 .quick-questions {
@@ -204,8 +268,23 @@ footer {
 
 .backend-panel {
   background: #ffffff;
-  padding: 14px;
+  border: 1px solid var(--line);
+  padding: 16px;
   border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+.backend-toolbar {
+  align-items: center !important;
+  margin-bottom: 10px;
+}
+
+.backend-toolbar button {
+  min-height: 40px !important;
+  border-radius: 8px !important;
+  background: var(--brand) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
 }
 
 @media (max-width: 780px) {
@@ -216,6 +295,10 @@ footer {
   .simple-shell {
     border-radius: 8px;
     padding: 10px;
+  }
+
+  .service-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 """
@@ -914,6 +997,41 @@ def rows_for_evidence():
     ]
 
 
+def service_overview_html(user_id=None):
+    orders = list_orders(user_id)
+    tickets = list_tickets()
+    open_tickets = [
+        item for item in tickets
+        if item.get("status") not in {"已完成", "已关闭", "closed", "done"}
+    ]
+    evidence_count = len(list_evidence_files())
+    shipped_count = len([item for item in orders if "发货" in item.get("status", "")])
+    return f"""
+<div class="service-overview">
+  <div class="metric-card">
+    <div class="metric-label">当前用户订单</div>
+    <div class="metric-value">{len(orders)}</div>
+    <div class="metric-note">可直接查询售后状态</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">发货相关</div>
+    <div class="metric-value">{shipped_count}</div>
+    <div class="metric-note">物流、拒收、改地址</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">待处理工单</div>
+    <div class="metric-value">{len(open_tickets)}</div>
+    <div class="metric-note">投诉、核查、人工复核</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">售后凭证</div>
+    <div class="metric-value">{evidence_count}</div>
+    <div class="metric-note">破损、错发、少件材料</div>
+  </div>
+</div>
+"""
+
+
 def login_user(phone, password):
     user = get_user_by_phone((phone or "").strip(), (password or "").strip())
     if not user:
@@ -964,7 +1082,8 @@ def show_evidence_upload():
 def send_message_ui(message, history, user, files):
     text = (message or "").strip()
     if not text and not files:
-        return history, "", None, rows_for_orders(user.get("user_id") if user else None)
+        user_id = user.get("user_id") if user else None
+        return history, "", None, rows_for_orders(user_id), service_overview_html(user_id)
 
     user_id = user.get("user_id") if user else None
     uploaded_paths = normalize_uploaded_files(files)
@@ -986,7 +1105,7 @@ def send_message_ui(message, history, user, files):
         {"role": "user", "content": ask_text},
         {"role": "assistant", "content": answer},
     ]
-    return updated, "", gr.update(value=None, visible=False), rows_for_orders(user_id)
+    return updated, "", gr.update(value=None, visible=False), rows_for_orders(user_id), service_overview_html(user_id)
 
 
 def refresh_backend():
@@ -1014,6 +1133,7 @@ def build_demo():
                         f"### 小小易\n{demo_user_name}，已接入星选商城售后系统",
                         elem_classes="simple-header",
                     )
+                    overview = gr.HTML(service_overview_html(demo_user_id))
                     with gr.Accordion("我的订单", open=False, elem_classes="simple-orders"):
                         orders_table = gr.Dataframe(
                             headers=["订单号", "商品", "状态", "物流单号", "详情"],
@@ -1022,6 +1142,12 @@ def build_demo():
                             col_count=(5, "fixed"),
                             label="我的订单",
                         )
+                    with gr.Row(elem_classes="quick-action-row"):
+                        quick_logistics = gr.Button("查物流")
+                        quick_refund = gr.Button("申请退款")
+                        quick_exchange = gr.Button("换货")
+                        quick_evidence = gr.Button("破损少件")
+                        quick_handoff = gr.Button("转人工")
                     chatbot = gr.Chatbot(
                         type="messages",
                         height=560,
@@ -1065,8 +1191,9 @@ def build_demo():
 
             with gr.Tab("后台管理"):
                 with gr.Column(elem_classes="backend-panel"):
-                    gr.Markdown("### 工单、会话和凭证")
-                    refresh_btn = gr.Button("刷新后台数据")
+                    with gr.Row(elem_classes="backend-toolbar"):
+                        gr.Markdown("### 工单、会话和凭证")
+                        refresh_btn = gr.Button("刷新后台数据", scale=0, min_width=120)
                     tickets_table = gr.Dataframe(
                         headers=["工单号", "用户", "订单号", "类型", "状态", "优先级", "进度", "更新时间"],
                         value=rows_for_tickets(),
@@ -1086,13 +1213,13 @@ def build_demo():
         send_btn.click(
             send_message_ui,
             inputs=[message, chatbot, user_state, files],
-            outputs=[chatbot, message, files, orders_table],
+            outputs=[chatbot, message, files, orders_table, overview],
             api_name=False,
         )
         message.submit(
             send_message_ui,
             inputs=[message, chatbot, user_state, files],
-            outputs=[chatbot, message, files, orders_table],
+            outputs=[chatbot, message, files, orders_table, overview],
             api_name=False,
         )
         message.change(
@@ -1105,6 +1232,36 @@ def build_demo():
             show_evidence_upload,
             inputs=[],
             outputs=[files],
+            api_name=False,
+        )
+        quick_logistics.click(
+            lambda: "订单 EC20260702002 物流到哪了？",
+            inputs=[],
+            outputs=[message],
+            api_name=False,
+        )
+        quick_refund.click(
+            lambda: "我要申请退款",
+            inputs=[],
+            outputs=[message],
+            api_name=False,
+        )
+        quick_exchange.click(
+            lambda: "我要换货",
+            inputs=[],
+            outputs=[message],
+            api_name=False,
+        )
+        quick_evidence.click(
+            lambda: "商品破损了怎么办？",
+            inputs=[],
+            outputs=[message],
+            api_name=False,
+        )
+        quick_handoff.click(
+            lambda: "我要转人工",
+            inputs=[],
+            outputs=[message],
             api_name=False,
         )
         refresh_btn.click(
