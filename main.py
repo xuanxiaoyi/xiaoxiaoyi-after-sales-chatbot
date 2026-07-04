@@ -68,7 +68,7 @@ DEFAULT_DEMO_PASSWORD = "123456"
 
 APP_CSS = """
 :root {
-  --page-bg: #f3f4f6;
+  --page-bg: #ffffff;
   --panel-bg: #ffffff;
   --panel-soft: #f8fafc;
   --line: #e5e7eb;
@@ -87,9 +87,9 @@ body,
 }
 
 .gradio-container {
-  max-width: 1180px !important;
+  max-width: 1240px !important;
   margin: 0 auto !important;
-  padding: 0 14px 20px !important;
+  padding: 0 16px 24px !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif !important;
 }
 
@@ -99,7 +99,7 @@ footer {
 
 #app_title {
   color: var(--text);
-  padding: 14px 4px 10px;
+  padding: 14px 4px 8px;
 }
 
 #app_title h1 {
@@ -110,20 +110,17 @@ footer {
 }
 
 .simple-shell {
-  background: var(--panel-bg);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 16px;
-  max-width: 1040px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0 0 18px;
+  max-width: 980px;
   margin: 0 auto;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.07);
+  box-shadow: none;
 }
 
 .simple-header {
-  background: var(--brand);
-  border-radius: 8px;
-  padding: 14px 16px;
-  margin-bottom: 12px;
+  display: none;
 }
 
 .simple-header h3,
@@ -143,65 +140,52 @@ footer {
   color: #cbd5e1 !important;
 }
 
-.service-overview {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin: 0 0 12px;
+.prompt-panel {
+  padding: 70px 0 48px;
+  text-align: center;
 }
 
-.metric-card {
-  background: var(--panel-soft);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px 12px;
-}
-
-.metric-label {
-  color: var(--muted);
-  font-size: 12px;
-  margin-bottom: 4px;
-}
-
-.metric-value {
-  color: var(--text);
-  font-size: 19px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.metric-note {
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 4px;
+.prompt-panel h2 {
+  color: #000000;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.25;
+  margin: 0 0 34px;
 }
 
 .quick-action-row {
-  gap: 8px !important;
-  margin-bottom: 10px;
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px !important;
+  max-width: 860px;
+  margin: 0 auto;
 }
 
 .quick-action-row button {
-  min-height: 40px !important;
-  border-radius: 8px !important;
-  border: 1px solid var(--line) !important;
-  background: #ffffff !important;
-  color: var(--text) !important;
-  font-size: 14px !important;
-  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+  min-height: 46px !important;
+  border-radius: 15px !important;
+  border: 0 !important;
+  background: #f3f4f6 !important;
+  color: #111111 !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  padding: 0 18px !important;
+  box-shadow: none !important;
+  transition: background 160ms ease, color 160ms ease;
 }
 
 .quick-action-row button:hover {
-  background: #eff6ff !important;
-  border-color: #bfdbfe !important;
-  color: var(--brand-2) !important;
+  background: #e9eef7 !important;
+  color: #1d4ed8 !important;
 }
 
 #simple_chatbot {
-  background: #fafafa !important;
-  border: 1px solid var(--line) !important;
-  border-radius: 8px !important;
-  min-height: 520px !important;
+  background: #ffffff !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  min-height: 260px !important;
+  margin-bottom: 26px !important;
 }
 
 #simple_chatbot .message {
@@ -214,20 +198,32 @@ footer {
 }
 
 .simple-upload {
-  margin: 8px 0;
+  max-width: 760px;
+  margin: 0 auto 12px;
+  border-radius: 14px;
+  overflow: hidden;
 }
 
 .simple-input-bar {
   align-items: center !important;
-  gap: 8px !important;
-  padding-top: 12px !important;
+  gap: 10px !important;
+  max-width: 780px;
+  min-height: 104px;
+  margin: 0 auto;
+  padding: 18px 22px !important;
+  background: #ffffff;
+  border: 1px solid #bfdbfe;
+  border-radius: 24px;
+  box-shadow: 0 18px 45px rgba(37, 99, 235, 0.12);
 }
 
 .simple-input textarea,
 .simple-input input {
-  border-radius: 8px !important;
-  min-height: 44px !important;
-  font-size: 15px !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 12px !important;
+  min-height: 56px !important;
+  font-size: 18px !important;
   background: #ffffff !important;
 }
 
@@ -236,30 +232,33 @@ footer {
 }
 
 .simple-plus-btn button {
-  height: 44px !important;
-  border-radius: 8px !important;
-  font-size: 20px !important;
+  width: 46px !important;
+  height: 46px !important;
+  border-radius: 50% !important;
+  font-size: 26px !important;
   background: #ffffff !important;
   color: var(--text) !important;
-  border: 1px solid var(--line) !important;
+  border: 0 !important;
 }
 
 .simple-send-btn button {
-  height: 44px !important;
-  border-radius: 8px !important;
+  height: 46px !important;
+  border-radius: 999px !important;
   border: 0 !important;
-  background: var(--brand-2) !important;
-  color: #ffffff !important;
+  background: #f3f4f6 !important;
+  color: #111111 !important;
   font-size: 15px !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
+  min-width: 96px !important;
 }
 
 .quick-questions {
-  margin-top: 10px;
+  display: none;
 }
 
 .simple-orders {
-  margin-bottom: 10px;
+  max-width: 780px;
+  margin: 0 auto 18px;
 }
 
 .simple-orders table {
@@ -293,12 +292,21 @@ footer {
   }
 
   .simple-shell {
-    border-radius: 8px;
-    padding: 10px;
+    padding: 0 0 12px;
   }
 
-  .service-overview {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .prompt-panel {
+    padding: 42px 0 28px;
+  }
+
+  .prompt-panel h2 {
+    font-size: 24px;
+  }
+
+  .simple-input-bar {
+    min-height: 92px;
+    padding: 14px !important;
+    border-radius: 18px;
   }
 }
 """
@@ -998,38 +1006,7 @@ def rows_for_evidence():
 
 
 def service_overview_html(user_id=None):
-    orders = list_orders(user_id)
-    tickets = list_tickets()
-    open_tickets = [
-        item for item in tickets
-        if item.get("status") not in {"已完成", "已关闭", "closed", "done"}
-    ]
-    evidence_count = len(list_evidence_files())
-    shipped_count = len([item for item in orders if "发货" in item.get("status", "")])
-    return f"""
-<div class="service-overview">
-  <div class="metric-card">
-    <div class="metric-label">当前用户订单</div>
-    <div class="metric-value">{len(orders)}</div>
-    <div class="metric-note">可直接查询售后状态</div>
-  </div>
-  <div class="metric-card">
-    <div class="metric-label">发货相关</div>
-    <div class="metric-value">{shipped_count}</div>
-    <div class="metric-note">物流、拒收、改地址</div>
-  </div>
-  <div class="metric-card">
-    <div class="metric-label">待处理工单</div>
-    <div class="metric-value">{len(open_tickets)}</div>
-    <div class="metric-note">投诉、核查、人工复核</div>
-  </div>
-  <div class="metric-card">
-    <div class="metric-label">售后凭证</div>
-    <div class="metric-value">{evidence_count}</div>
-    <div class="metric-note">破损、错发、少件材料</div>
-  </div>
-</div>
-"""
+    return ""
 
 
 def login_user(phone, password):
@@ -1142,12 +1119,18 @@ def build_demo():
                             col_count=(5, "fixed"),
                             label="我的订单",
                         )
-                    with gr.Row(elem_classes="quick-action-row"):
-                        quick_logistics = gr.Button("查物流")
-                        quick_refund = gr.Button("申请退款")
-                        quick_exchange = gr.Button("换货")
-                        quick_evidence = gr.Button("破损少件")
-                        quick_handoff = gr.Button("转人工")
+                    with gr.Column(elem_classes="prompt-panel"):
+                        gr.HTML("<h2>有什么我能帮你的吗？</h2>")
+                        with gr.Row(elem_classes="quick-action-row"):
+                            quick_logistics = gr.Button("订单 EC20260702002 物流到哪了？")
+                            quick_refund = gr.Button("我要申请退款")
+                            quick_exchange = gr.Button("我要换货")
+                            quick_evidence = gr.Button("商品破损了怎么办？")
+                            quick_handoff = gr.Button("我要转人工")
+                        with gr.Row(elem_classes="quick-action-row"):
+                            quick_cancel = gr.Button("订单还没发货，可以取消吗？")
+                            quick_address = gr.Button("已发货订单怎么改地址？")
+                            quick_invoice = gr.Button("我要开发票")
                     chatbot = gr.Chatbot(
                         type="messages",
                         height=560,
@@ -1260,6 +1243,24 @@ def build_demo():
         )
         quick_handoff.click(
             lambda: "我要转人工",
+            inputs=[],
+            outputs=[message],
+            api_name=False,
+        )
+        quick_cancel.click(
+            lambda: "订单 EC20260702003 可以取消吗？",
+            inputs=[],
+            outputs=[message],
+            api_name=False,
+        )
+        quick_address.click(
+            lambda: "订单 EC20260702002 我想改地址",
+            inputs=[],
+            outputs=[message],
+            api_name=False,
+        )
+        quick_invoice.click(
+            lambda: "我要开发票",
             inputs=[],
             outputs=[message],
             api_name=False,
