@@ -104,7 +104,7 @@ footer {
 }
 
 #app_title h1 {
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 700;
   margin: 0;
   letter-spacing: 0;
@@ -118,6 +118,14 @@ footer {
   max-width: 980px;
   margin: 0 auto;
   box-shadow: none;
+}
+
+.home-stage {
+  min-height: calc(100dvh - 210px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 42px;
 }
 
 .simple-header {
@@ -142,13 +150,13 @@ footer {
 }
 
 .prompt-panel {
-  padding: 58px 0 24px;
+  padding: 92px 0 0;
   text-align: center;
 }
 
 .prompt-panel h2 {
   color: #000000;
-  font-size: 34px;
+  font-size: 30px;
   font-weight: 800;
   line-height: 1.25;
   margin: 0 0 34px;
@@ -224,6 +232,10 @@ footer {
   border: 1px solid #bfdbfe;
   border-radius: 18px;
   box-shadow: 0 14px 34px rgba(37, 99, 235, 0.11);
+}
+
+.input-dock {
+  padding-bottom: 12px;
 }
 
 .simple-input textarea,
@@ -316,12 +328,17 @@ footer {
     padding: 0 0 12px;
   }
 
+  .home-stage {
+    min-height: calc(100dvh - 170px);
+    gap: 26px;
+  }
+
   .prompt-panel {
-    padding: 32px 0 18px;
+    padding: 44px 0 0;
   }
 
   .prompt-panel h2 {
-    font-size: 28px;
+    font-size: 26px;
   }
 
   .simple-input-bar {
@@ -1129,59 +1146,61 @@ def build_demo():
                     )
                     overview = gr.HTML(service_overview_html(demo_user_id))
                     orders_table = gr.State(rows_for_orders(demo_user_id))
-                    with gr.Column(elem_classes="prompt-panel"):
-                        gr.HTML("<h2>我是小小易，有什么我能帮到你的吗？</h2>")
-                        with gr.Row(elem_classes="quick-action-row"):
-                            quick_logistics = gr.Button("订单 EC20260702002 物流到哪了？")
-                            quick_refund = gr.Button("我要申请退款")
-                            quick_exchange = gr.Button("我要换货")
-                            quick_evidence = gr.Button("商品破损了怎么办？")
-                            quick_handoff = gr.Button("我要转人工")
-                        with gr.Row(elem_classes="quick-action-row"):
-                            quick_cancel = gr.Button("订单还没发货，可以取消吗？")
-                            quick_address = gr.Button("已发货订单怎么改地址？")
-                            quick_invoice = gr.Button("我要开发票")
-                    chatbot = gr.Chatbot(
-                        type="messages",
-                        height=560,
-                        label="客服对话",
-                        value=greeting,
-                        show_label=False,
-                        container=False,
-                        layout="bubble",
-                        bubble_full_width=False,
-                        elem_id="simple_chatbot",
-                        visible=False,
-                    )
-                    files = gr.File(
-                        label="上传售后凭证（照片、视频、快递面单等）",
-                        file_count="multiple",
-                        visible=False,
-                        elem_classes="simple-upload",
-                    )
-                    with gr.Row(elem_classes="simple-input-bar"):
-                        message = gr.Textbox(
-                            placeholder="请输入订单号或售后问题...",
-                            label="",
-                            show_label=False,
-                            scale=12,
-                            max_lines=3,
-                            elem_classes="simple-input",
-                        )
-                        upload_btn = gr.Button("+", scale=1, min_width=44, elem_classes="simple-plus-btn")
-                        send_btn = gr.Button("发送", scale=2, min_width=72, elem_classes="simple-send-btn")
+                    with gr.Column(elem_classes="home-stage"):
+                        with gr.Column(elem_classes="prompt-panel"):
+                            gr.HTML("<h2>我是小小易，有什么我能帮到你的吗？</h2>")
+                            with gr.Row(elem_classes="quick-action-row"):
+                                quick_logistics = gr.Button("订单 EC20260702002 物流到哪了？")
+                                quick_refund = gr.Button("我要申请退款")
+                                quick_exchange = gr.Button("我要换货")
+                                quick_evidence = gr.Button("商品破损了怎么办？")
+                                quick_handoff = gr.Button("我要转人工")
+                            with gr.Row(elem_classes="quick-action-row"):
+                                quick_cancel = gr.Button("订单还没发货，可以取消吗？")
+                                quick_address = gr.Button("已发货订单怎么改地址？")
+                                quick_invoice = gr.Button("我要开发票")
+                        with gr.Column(elem_classes="input-dock"):
+                            chatbot = gr.Chatbot(
+                                type="messages",
+                                height=560,
+                                label="客服对话",
+                                value=greeting,
+                                show_label=False,
+                                container=False,
+                                layout="bubble",
+                                bubble_full_width=False,
+                                elem_id="simple_chatbot",
+                                visible=False,
+                            )
+                            files = gr.File(
+                                label="上传售后凭证（照片、视频、快递面单等）",
+                                file_count="multiple",
+                                visible=False,
+                                elem_classes="simple-upload",
+                            )
+                            with gr.Row(elem_classes="simple-input-bar"):
+                                message = gr.Textbox(
+                                    placeholder="请输入订单号或售后问题...",
+                                    label="",
+                                    show_label=False,
+                                    scale=12,
+                                    max_lines=3,
+                                    elem_classes="simple-input",
+                                )
+                                upload_btn = gr.Button("+", scale=1, min_width=44, elem_classes="simple-plus-btn")
+                                send_btn = gr.Button("发送", scale=2, min_width=72, elem_classes="simple-send-btn")
 
-                    with gr.Accordion("常用问题", open=False, elem_classes="quick-questions"):
-                        gr.Examples(
-                            examples=[
-                                "订单 EC20260702002 物流到哪了？",
-                                "订单 EC20260702003 怎么还不发货？",
-                                "订单 EC20260702002 我想改地址",
-                                "商品破损了怎么办？",
-                                "我要投诉，处理太慢了",
-                            ],
-                            inputs=message,
-                        )
+                            with gr.Accordion("常用问题", open=False, elem_classes="quick-questions"):
+                                gr.Examples(
+                                    examples=[
+                                        "订单 EC20260702002 物流到哪了？",
+                                        "订单 EC20260702003 怎么还不发货？",
+                                        "订单 EC20260702002 我想改地址",
+                                        "商品破损了怎么办？",
+                                        "我要投诉，处理太慢了",
+                                    ],
+                                    inputs=message,
+                                )
 
             with gr.Tab("后台管理"):
                 with gr.Column(elem_classes="backend-panel"):
