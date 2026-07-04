@@ -65,28 +65,24 @@ GENERAL_CHAT_MESSAGE = """你是星选商城的智能售后客服小小易。
 SHOP_NAME = "星选商城"
 DEFAULT_DEMO_PHONE = "13800000001"
 DEFAULT_DEMO_PASSWORD = "123456"
-BOT_AVATAR = "assets/bot_avatar.svg"
-USER_AVATAR = "assets/user_avatar.svg"
 
 APP_CSS = """
 :root {
-  --wechat-bg: #ededed;
-  --wechat-panel: #f7f7f7;
-  --wechat-line: #dedede;
-  --wechat-text: #111111;
-  --wechat-muted: #9a9a9a;
-  --wechat-user: #fbe8e8;
-  --wechat-bot: #ffffff;
-  --wechat-green: #8faa78;
+  --page-bg: #f5f7fb;
+  --panel-bg: #ffffff;
+  --line: #e5e7eb;
+  --text: #111827;
+  --muted: #6b7280;
+  --brand: #2563eb;
 }
 
 body,
 .gradio-container {
-  background: var(--wechat-bg) !important;
+  background: var(--page-bg) !important;
 }
 
 .gradio-container {
-  max-width: 1180px !important;
+  max-width: 1080px !important;
   margin: 0 auto !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif !important;
 }
@@ -96,145 +92,113 @@ footer {
 }
 
 #app_title {
-  text-align: center;
-  color: #1f1f1f;
-  padding: 10px 0 4px;
+  color: var(--text);
+  padding: 14px 4px 8px;
 }
 
 #app_title h1 {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 650;
   margin: 0;
 }
 
-.wechat-shell {
-  background: var(--wechat-bg);
-  border: 1px solid var(--wechat-line);
+.simple-shell {
+  background: var(--panel-bg);
+  border: 1px solid var(--line);
   border-radius: 8px;
-  overflow: hidden;
-  min-height: 720px;
-  max-width: 760px;
+  padding: 14px;
+  max-width: 900px;
   margin: 0 auto;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
-.wechat-header {
-  background: #f5f5f5;
-  border-bottom: 1px solid var(--wechat-line);
-  padding: 12px 16px;
-  text-align: center;
+.simple-header {
+  padding: 2px 2px 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
 }
 
-.wechat-header h3,
-.wechat-header p {
+.simple-header h3,
+.simple-header p {
   margin: 0 !important;
 }
 
-.wechat-header h3 {
-  font-size: 17px !important;
+.simple-header h3 {
+  font-size: 18px !important;
   font-weight: 650 !important;
-  color: #111111 !important;
+  color: var(--text) !important;
 }
 
-.wechat-header p {
+.simple-header p {
   margin-top: 4px !important;
-  font-size: 12px !important;
-  color: var(--wechat-muted) !important;
+  font-size: 13px !important;
+  color: var(--muted) !important;
 }
 
-#wechat_chatbot {
-  background: var(--wechat-bg) !important;
-  border: 0 !important;
+#simple_chatbot {
+  background: #fafafa !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 8px !important;
 }
 
-#wechat_chatbot .wrap,
-#wechat_chatbot .bubble-wrap {
-  background: var(--wechat-bg) !important;
-}
-
-#wechat_chatbot .message {
-  border-radius: 6px !important;
+#simple_chatbot .message {
+  border-radius: 8px !important;
   box-shadow: none !important;
-  border: 0 !important;
-  color: var(--wechat-text) !important;
-  font-size: 17px !important;
+  color: var(--text) !important;
+  font-size: 15px !important;
   line-height: 1.55 !important;
-  padding: 12px 14px !important;
+  padding: 10px 12px !important;
 }
 
-#wechat_chatbot .message-row.user .message {
-  background: var(--wechat-user) !important;
+.simple-upload {
+  margin: 8px 0;
 }
 
-#wechat_chatbot .message-row.bot .message,
-#wechat_chatbot .message-row.assistant .message {
-  background: var(--wechat-bot) !important;
-}
-
-#wechat_chatbot img.avatar {
-  border-radius: 50% !important;
-  width: 46px !important;
-  height: 46px !important;
-}
-
-.wechat-upload {
-  padding: 0 12px 8px;
-  background: var(--wechat-bg);
-}
-
-.wechat-input-bar {
+.simple-input-bar {
   align-items: center !important;
-  gap: 10px !important;
-  background: #f7f7f7;
-  border-top: 1px solid var(--wechat-line);
-  padding: 12px !important;
+  gap: 8px !important;
+  padding-top: 10px !important;
 }
 
-.wechat-input textarea,
-.wechat-input input {
-  border: 0 !important;
-  border-radius: 0 !important;
-  min-height: 46px !important;
-  font-size: 16px !important;
+.simple-input textarea,
+.simple-input input {
+  border-radius: 8px !important;
+  min-height: 44px !important;
+  font-size: 15px !important;
   background: #ffffff !important;
 }
 
-.wechat-icon-btn,
-.wechat-send-btn {
-  min-width: 48px !important;
+.simple-plus-btn {
+  min-width: 44px !important;
 }
 
-.wechat-icon-btn button,
-.wechat-send-btn button {
-  height: 46px !important;
-  border-radius: 23px !important;
+.simple-plus-btn button {
+  height: 44px !important;
+  border-radius: 8px !important;
   font-size: 20px !important;
-  border: 2px solid #111111 !important;
-  background: #f7f7f7 !important;
-  color: #111111 !important;
-  padding: 0 !important;
+  background: #ffffff !important;
+  color: var(--text) !important;
+  border: 1px solid var(--line) !important;
 }
 
-.wechat-send-btn button {
-  border-radius: 6px !important;
+.simple-send-btn button {
+  height: 44px !important;
+  border-radius: 8px !important;
   border: 0 !important;
-  background: #1aad19 !important;
+  background: var(--brand) !important;
   color: #ffffff !important;
   font-size: 15px !important;
 }
 
 .quick-questions {
-  background: #f7f7f7;
-  border-top: 1px solid var(--wechat-line);
-  padding: 10px 12px;
+  margin-top: 10px;
 }
 
-.wechat-orders {
-  background: #f7f7f7;
-  border-bottom: 1px solid var(--wechat-line);
-  padding: 8px 12px;
+.simple-orders {
+  margin-bottom: 10px;
 }
 
-.wechat-orders table {
+.simple-orders table {
   font-size: 12px !important;
 }
 
@@ -246,16 +210,13 @@ footer {
 
 @media (max-width: 780px) {
   .gradio-container {
-    padding: 0 !important;
+    padding: 8px !important;
   }
 
-  .wechat-shell {
-    border-radius: 0;
-    border-left: 0;
-    border-right: 0;
-    min-height: 100vh;
+  .simple-shell {
+    border-radius: 8px;
+    padding: 10px;
   }
-
 }
 """
 
@@ -1048,12 +1009,12 @@ def build_demo():
 
         with gr.Tabs():
             with gr.Tab("用户客服"):
-                with gr.Column(elem_classes="wechat-shell"):
+                with gr.Column(elem_classes="simple-shell"):
                     gr.Markdown(
                         f"### 小小易\n{demo_user_name}，已接入星选商城售后系统",
-                        elem_classes="wechat-header",
+                        elem_classes="simple-header",
                     )
-                    with gr.Accordion("我的订单", open=False, elem_classes="wechat-orders"):
+                    with gr.Accordion("我的订单", open=False, elem_classes="simple-orders"):
                         orders_table = gr.Dataframe(
                             headers=["订单号", "商品", "状态", "物流单号", "详情"],
                             value=rows_for_orders(demo_user_id),
@@ -1070,28 +1031,25 @@ def build_demo():
                         container=False,
                         layout="bubble",
                         bubble_full_width=False,
-                        avatar_images=(USER_AVATAR, BOT_AVATAR),
-                        elem_id="wechat_chatbot",
+                        elem_id="simple_chatbot",
                     )
                     files = gr.File(
                         label="上传售后凭证（照片、视频、快递面单等）",
                         file_count="multiple",
                         visible=False,
-                        elem_classes="wechat-upload",
+                        elem_classes="simple-upload",
                     )
-                    with gr.Row(elem_classes="wechat-input-bar"):
-                        voice_btn = gr.Button("麦", scale=1, min_width=48, elem_classes="wechat-icon-btn")
+                    with gr.Row(elem_classes="simple-input-bar"):
                         message = gr.Textbox(
-                            placeholder="",
+                            placeholder="请输入订单号或售后问题...",
                             label="",
                             show_label=False,
                             scale=12,
                             max_lines=3,
-                            elem_classes="wechat-input",
+                            elem_classes="simple-input",
                         )
-                        emoji_btn = gr.Button("笑", scale=1, min_width=48, elem_classes="wechat-icon-btn")
-                        upload_btn = gr.Button("+", scale=1, min_width=48, elem_classes="wechat-icon-btn")
-                        send_btn = gr.Button("发送", scale=2, min_width=72, elem_classes="wechat-send-btn")
+                        upload_btn = gr.Button("+", scale=1, min_width=44, elem_classes="simple-plus-btn")
+                        send_btn = gr.Button("发送", scale=2, min_width=72, elem_classes="simple-send-btn")
 
                     with gr.Accordion("常用问题", open=False, elem_classes="quick-questions"):
                         gr.Examples(
