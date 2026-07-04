@@ -104,7 +104,7 @@ footer {
 }
 
 #app_title h1 {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 700;
   margin: 0;
   letter-spacing: 0;
@@ -142,13 +142,13 @@ footer {
 }
 
 .prompt-panel {
-  padding: 76px 0 42px;
+  padding: 58px 0 24px;
   text-align: center;
 }
 
 .prompt-panel h2 {
   color: #000000;
-  font-size: 30px;
+  font-size: 34px;
   font-weight: 800;
   line-height: 1.25;
   margin: 0 0 34px;
@@ -185,9 +185,16 @@ footer {
   background: #ffffff !important;
   border: 0 !important;
   border-radius: 12px !important;
-  min-height: 180px !important;
-  margin: 0 auto 22px !important;
+  min-height: 0 !important;
+  margin: 0 auto 12px !important;
   max-width: 780px;
+}
+
+#simple_chatbot[style*="display: none"],
+#simple_chatbot.hidden {
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 #simple_chatbot .message {
@@ -310,11 +317,11 @@ footer {
   }
 
   .prompt-panel {
-    padding: 42px 0 28px;
+    padding: 32px 0 18px;
   }
 
   .prompt-panel h2 {
-    font-size: 24px;
+    font-size: 28px;
   }
 
   .simple-input-bar {
